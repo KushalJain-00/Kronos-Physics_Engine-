@@ -1,6 +1,7 @@
 from core.particles import Particle
 from visualization.renderer import Renderer
+from simulation.world import World
 
-p = Particle(400, 500, 1)
-r = Renderer(800, 600)
-r.run()
+world = World(800, 600)
+renderer = Renderer(world)
+renderer.run()
