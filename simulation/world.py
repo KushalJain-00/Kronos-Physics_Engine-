@@ -8,8 +8,8 @@ class World:
         self.particles = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
-        self.drag_coefficient = 0.1
-        self.dt = 0.1
+        self.drag_coefficient = 0
+        self.dt = 0.05
 
     def add_particle(self, particle):
         self.particles.append(particle)
@@ -23,7 +23,7 @@ class World:
             p.apply_force(drag_force)
             p.update(dt)
             self._handle_boundaries(p)
-            self._handle_collisions()
+        self._handle_collisions()
 
     def _handle_boundaries(self, p):
         # Lower Boundry
