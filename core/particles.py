@@ -3,6 +3,7 @@ from core.vectors import Vector2D
 class Particle:
     def __init__(self , x: float , y: float , mass: float, color=(255, 255, 255)):
         self.mass = mass
+        self.radius = max(5 , int(mass * 5))
         self.time = 0.0
         self.position = Vector2D(x , y)
         self.velocity = Vector2D(0 , 0)
