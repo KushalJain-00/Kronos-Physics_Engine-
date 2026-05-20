@@ -50,6 +50,8 @@ class Renderer:
                         mass = 1.0
                     elif event.button == 3:
                         mass = 5.0
+                    else:
+                        continue
                     mx, my = event.pos
                     wx, wy = self.from_screen(mx, my)
                     color = (

@@ -1,5 +1,4 @@
 from core.vectors import Vector2D
-from core.particles import Particle
 
 class World:
     def __init__(self, width, height):
@@ -19,7 +18,7 @@ class World:
             dt = self.dt
         for p in self.particles:
             drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
-            p.apply_force(self.gravity)
+            p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
             p.apply_force(drag_force)
             p.update(dt)
             self._handle_boundaries(p)
@@ -27,20 +26,20 @@ class World:
 
     def _handle_boundaries(self, p):
         # Lower Boundry
-        if p.position.y <= 0:
-            p.position.y = 0
+        if p.position.y <= p.radius:
+            p.position.y = p.radius
             p.velocity.y *= -self.restitution
         # Upper Boundry
-        if p.position.y >= self.height:
-            p.position.y = self.height
+        if p.position.y >= self.height - p.radius:
+            p.position.y = self.height - p.radius
             p.velocity.y *= -self.restitution
         # Left Boundry
-        if p.position.x <= 0:
-            p.position.x = 0
+        if p.position.x <= p.radius:
+            p.position.x = p.radius
             p.velocity.x *= -self.restitution
         # Right Boundry
-        if p.position.x >= self.width:
-            p.position.x = self.width
+        if p.position.x >= self.width - p.radius:
+            p.position.x = self.width - p.radius
             p.velocity.x *= -self.restitution
     
     def _handle_collisions(self):
@@ -63,12 +62,21 @@ class World:
                     p2.position.y += dy * overlap / 2
                     
                     # momentum conservation
-                    m1, m2 = p1.mass, p2.mass
-                    v1x, v1y = p1.velocity.x, p1.velocity.y
-                    v2x, v2y = p2.velocity.x, p2.velocity.y
-                    
-                    p1.velocity.y = ((m1-m2)*v1y + 2*m2*v2y) / (m1+m2) * self.restitution
-                    p2.velocity.x = ((m2-m1)*v2x + 2*m1*v1x) / (m1+m2) * self.restitution
-                    p2.velocity.y = ((m2-m1)*v2y + 2*m1*v1y) / (m1+m2) * self.restitution
-                    p1.velocity.x = ((m1-m2)*v1x + 2*m2*v2x) / (m1+m2) * self.restitution
-    
+                    # collision normal
+                    nx = dx
+                    ny = dy
+                    dvx = p1.velocity.x - p2.velocity.x  # relative velocity
+                    dvy = p1.velocity.y - p2.velocity.y
+                    # relative velocity along normal
+                    dot = dvx * nx + dvy * ny
+                    if dot > 0:
+                        continue
+                    # impulse scalar
+                    impulse = (-(1 + self.restitution) * dot) / (1/p1.mass + 1/p2.mass)
+
+                    # apply impulse along normal only
+                    p1.velocity.x += (impulse / p1.mass) * nx
+                    p1.velocity.y += (impulse / p1.mass) * ny
+                    p2.velocity.x -= (impulse / p2.mass) * nx
+                    p2.velocity.y -= (impulse / p2.mass) * ny
+                        

@@ -2,6 +2,8 @@ from core.vectors import Vector2D
 
 class Particle:
     def __init__(self , x: float , y: float , mass: float, color=(255, 255, 255)):
+        if mass <= 0:
+            raise ValueError("mass must be > 0")
         self.mass = mass
         self.radius = max(5 , int(mass * 5))
         self.time = 0.0
