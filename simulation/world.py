@@ -8,6 +8,7 @@ class World:
         self.particles = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
+        self.drag_coefficient = 0.1
         self.dt = 0.1
 
     def add_particle(self, particle):
@@ -17,7 +18,9 @@ class World:
         if dt is None:
             dt = self.dt
         for p in self.particles:
+            drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
             p.apply_force(self.gravity)
+            p.apply_force(drag_force)
             p.update(dt)
             self._handle_boundaries(p)
             self._handle_collisions()
@@ -68,5 +71,4 @@ class World:
                     p2.velocity.x = ((m2-m1)*v2x + 2*m1*v1x) / (m1+m2) * self.restitution
                     p2.velocity.y = ((m2-m1)*v2y + 2*m1*v1y) / (m1+m2) * self.restitution
                     p1.velocity.x = ((m1-m2)*v1x + 2*m2*v2x) / (m1+m2) * self.restitution
-    
     
