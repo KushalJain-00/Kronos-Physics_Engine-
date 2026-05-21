@@ -37,6 +37,11 @@ class Renderer:
         sx, sy = self.to_screen(particle.position.x, particle.position.y)
         pygame.draw.circle(self.screen, particle.color, (sx, sy), particle.radius)
 
+    def draw_spring(self, spring):
+        sx1, sy1 = self.to_screen(spring.p1.position.x, spring.p1.position.y)
+        sx2, sy2 = self.to_screen(spring.p2.position.x, spring.p2.position.y)
+        pygame.draw.line(self.screen, (100, 100, 255), (sx1, sy1), (sx2, sy2), 2)
+
     def run(self):
         dt = 0.1
         running = True
@@ -60,13 +65,15 @@ class Renderer:
                         random.randint(0, 255),
                     )
                     particle = Particle(wx, wy, mass, color=color)
-                    particle.velocity = Vector2D(random.uniform(-50, 50), random.uniform(0, 150))
+                    # particle.velocity = Vector2D(random.uniform(-50, 50), random.uniform(0, 150))
                     self.world.add_particle(particle)
 
             self.world.step(dt)
 
             self.screen.fill((0, 0, 0))
             self.draw_grid()
+            for spring in self.world.springs:
+                self.draw_spring(spring)
             for p in self.world.particles:
                 self.draw_particle(p)
             pygame.display.flip()
