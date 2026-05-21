@@ -23,6 +23,9 @@ class Particle:
         self.position.y += self.velocity.y * dt + 0.5 * self.acceleration.y * dt**2
         self.velocity.x += self.acceleration.x * dt
         self.velocity.y += self.acceleration.y * dt
+        MAX_VELOCITY = 1000
+        self.velocity.x = max(-MAX_VELOCITY, min(MAX_VELOCITY, self.velocity.x))
+        self.velocity.y = max(-MAX_VELOCITY, min(MAX_VELOCITY, self.velocity.y))
         self.acceleration = Vector2D(0 , 0)
         self.time += dt
 

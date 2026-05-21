@@ -5,23 +5,32 @@ class World:
         self.width = width
         self.height = height
         self.particles = []
+        self.springs = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
         self.drag_coefficient = 0
-        self.dt = 0.05
+        self.dt = 0.016
 
     def add_particle(self, particle):
         self.particles.append(particle)
 
+    def add_spring(self , spring):
+        self.springs.append(spring)
+
     def step(self, dt=None):
         if dt is None:
             dt = self.dt
+        
+        for spring in self.springs:
+            spring.apply_spring_force()
+        
         for p in self.particles:
             drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
             p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
             p.apply_force(drag_force)
             p.update(dt)
             self._handle_boundaries(p)
+        
         self._handle_collisions()
 
     def _handle_boundaries(self, p):
@@ -69,7 +78,7 @@ class World:
                     dvy = p1.velocity.y - p2.velocity.y
                     # relative velocity along normal
                     dot = dvx * nx + dvy * ny
-                    if dot > 0:
+                    if dot <= 0:
                         continue
                     # impulse scalar
                     impulse = (-(1 + self.restitution) * dot) / (1/p1.mass + 1/p2.mass)
