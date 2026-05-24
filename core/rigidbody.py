@@ -12,7 +12,7 @@ class RigidBody:
         self.acceleration = Vector2D(0 , 0)
         self.old_acceleration = Vector2D(0 , 0)
         self.vertices = []
-        self.angle = 0.0
+        self.angle = angle
         self.angular_velocity = 0.0
         self.angular_acceleration = 0.0
         self.moment_of_inertia = 0.0

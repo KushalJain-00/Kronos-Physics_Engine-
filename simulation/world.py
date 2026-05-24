@@ -63,6 +63,8 @@ class World:
         
     def _handel_rigid_body_boundries(self , body):
         vertices = body.get_world_vertices()
+        if not vertices:
+            return
         x_coords = [vertice[0] for vertice in vertices]
         y_coords = [vertice[1] for vertice in vertices]
         
