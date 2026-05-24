@@ -42,11 +42,15 @@ class Renderer:
         sx2, sy2 = self.to_screen(spring.p2.position.x, spring.p2.position.y)
         pygame.draw.line(self.screen, (100, 100, 255), (sx1, sy1), (sx2, sy2), 2)
 
-    def run(self):
-        dt = 0.1
-        running = True
+    def draw_rigid_body(self , body):
+        vertices = body.get_world_vertices()
+        screen_vertices = [self.to_screen(x , y) for x , y in vertices]
+        pygame.draw.polygon(self.screen , body.color , screen_vertices , 2)
 
+    def run(self):
+        running = True
         while running:
+            self.world.step()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -68,7 +72,7 @@ class Renderer:
                     # particle.velocity = Vector2D(random.uniform(-50, 50), random.uniform(0, 150))
                     self.world.add_particle(particle)
 
-            self.world.step(dt)
+            self.world.step()
 
             self.screen.fill((0, 0, 0))
             self.draw_grid()
@@ -76,6 +80,8 @@ class Renderer:
                 self.draw_spring(spring)
             for p in self.world.particles:
                 self.draw_particle(p)
+            for body in self.world.rigid_bodies:
+                self.draw_rigid_body(body)
             pygame.display.flip()
             self.clock.tick(60)
 

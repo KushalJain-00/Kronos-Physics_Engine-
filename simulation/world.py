@@ -6,10 +6,11 @@ class World:
         self.height = height
         self.particles = []
         self.springs = []
+        self.rigid_bodies = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
         self.drag_coefficient = 0
-        self.dt = 0.016
+        self.dt = 0.1
 
     def add_particle(self, particle):
         self.particles.append(particle)
@@ -17,9 +18,18 @@ class World:
     def add_spring(self , spring):
         self.springs.append(spring)
 
+    def add_rigid_bodies(self , body):
+        self.rigid_bodies.append(body)
+
     def step(self, dt=None):
         if dt is None:
             dt = self.dt
+        
+        for body in self.rigid_bodies:
+            body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
+            body.update(dt)
+            body.angular_velocity *= 0.99
+            self._handel_rigid_body_boundries(body)
         
         for spring in self.springs:
             spring.apply_spring_force()
@@ -34,22 +44,70 @@ class World:
         self._handle_collisions()
 
     def _handle_boundaries(self, p):
-        # Lower Boundry
+        # Lower Boundry for Particle
         if p.position.y <= p.radius:
             p.position.y = p.radius
             p.velocity.y *= -self.restitution
-        # Upper Boundry
+        # Upper Boundry for Particle
         if p.position.y >= self.height - p.radius:
             p.position.y = self.height - p.radius
             p.velocity.y *= -self.restitution
-        # Left Boundry
+        # Left Boundry for Particle
         if p.position.x <= p.radius:
             p.position.x = p.radius
             p.velocity.x *= -self.restitution
-        # Right Boundry
+        # Right Boundry for Particle
         if p.position.x >= self.width - p.radius:
             p.position.x = self.width - p.radius
             p.velocity.x *= -self.restitution
+        
+    def _handel_rigid_body_boundries(self , body):
+        vertices = body.get_world_vertices()
+        if not vertices:
+            return
+        x_coords = [vertice[0] for vertice in vertices]
+        y_coords = [vertice[1] for vertice in vertices]
+        
+        # bottom
+        if min(y_coords) <= 0:
+            penetration = -min(y_coords)
+            body.position.y += penetration
+            body.velocity.y *= -self.restitution
+            body.angular_velocity *= self.restitution
+            if abs(body.acceleration.y) < 2.0:
+                body.acceleration.y = 0
+            if abs(body.acceleration.x) < 2.0:
+                body.acceleration.x = 0
+            if abs(body.angular_acceleration) < 0.1:
+                body.angular_acceleration = 0
+            if abs(body.velocity.y) < 2.0:
+                body.velocity.y = 0
+            if abs(body.velocity.x) < 2.0:
+                body.velocity.x = 0
+            if abs(body.angular_velocity) < 0.1:
+                body.angular_velocity = 0
+            
+        
+        # top
+        if max(y_coords) >= self.height:
+            penetration = max(y_coords) - self.height
+            body.position.y -= penetration
+            body.velocity.y *= -self.restitution
+            body.angular_velocity *= self.restitution
+        
+        # left
+        if min(x_coords) <= 0:
+            penetration = -min(x_coords)
+            body.position.x += penetration
+            body.velocity.x *= -self.restitution
+            body.angular_velocity *= self.restitution
+        
+        # right
+        if max(x_coords) >= self.width:
+            penetration = max(x_coords) - self.width
+            body.position.x -= penetration
+            body.velocity.x *= -self.restitution
+            body.angular_velocity *= self.restitution
     
     def _handle_collisions(self):
         for i in range(len(self.particles)):
