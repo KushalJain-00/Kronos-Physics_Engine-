@@ -181,7 +181,7 @@ class World:
             return
 
         # impulse
-        impulse_scalar = -(1 + self.restitution) * vel_along_normal
+        impulse_scalar = -(1 + self.rigid_body_restitution) * vel_along_normal
         impulse_scalar /= (1/b1.mass + 1/b2.mass)
 
         b1.velocity.x += (impulse_scalar / b1.mass) * normal[0]
