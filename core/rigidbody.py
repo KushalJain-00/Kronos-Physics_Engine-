@@ -52,6 +52,42 @@ class RigidBody:
         self.acceleration.x += force.x / self.mass
         self.acceleration.y += force.y / self.mass
 
+    def get_axes(self):
+        vertices = self.get_world_vertices()
+        normals = []
+        n = len(vertices)
+        for i in range(n):
+            p1 = vertices[i]
+            p2 = vertices[(i+1) % n]
+            edge = (p2[0] - p1[0], p2[1] - p1[1])
+            normal = (-edge[1], edge[0])
+            normals.append(normal)
+        return normals
+
+    def project_onto_axis(self, axis):
+        vertices = self.get_world_vertices()
+        projections = [v[0] * axis[0] + v[1] * axis[1] for v in vertices]
+        return min(projections), max(projections)
+    
+    def sat_collision(self, other):
+        axes = self.get_axes() + other.get_axes()
+        min_overlap = float('inf')
+        best_axis = None
+        for axis in axes:
+            min_a, max_a = self.project_onto_axis(axis)
+            min_b, max_b = other.project_onto_axis(axis)
+            if max_a < min_b or max_b < min_a:
+                return None
+            overlap = min(max_a, max_b) - max(min_a, min_b)
+            if overlap < min_overlap:
+                min_overlap = overlap
+                best_axis = axis
+        length = (best_axis[0]**2 + best_axis[1]**2) ** 0.5
+        if length == 0:
+            return None
+        normal = (best_axis[0]/length, best_axis[1]/length)
+        return {"normal": normal, "depth": min_overlap}
+
     def update(self, dt):
         self.old_acceleration = Vector2D(self.acceleration.x, self.acceleration.y)
         # linear

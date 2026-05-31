@@ -9,6 +9,7 @@ class World:
         self.rigid_bodies = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
+        self.rigid_body_restitution = 0.5 
         self.drag_coefficient = 0
         self.dt = 0.1
 
@@ -28,8 +29,8 @@ class World:
         for body in self.rigid_bodies:
             body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
             body.update(dt)
-            body.angular_velocity *= 0.99
-            self._handel_rigid_body_boundries(body)
+            body.angular_velocity *= (0.99 ** (dt / 0.016))
+            self._handle_rigid_body_boundries(body)
         
         for spring in self.springs:
             spring.apply_spring_force()
@@ -42,6 +43,7 @@ class World:
             self._handle_boundaries(p)
         
         self._handle_collisions()
+        self._handle_rigid_body_collisions()
 
     def _handle_boundaries(self, p):
         # Lower Boundry for Particle
@@ -61,7 +63,7 @@ class World:
             p.position.x = self.width - p.radius
             p.velocity.x *= -self.restitution
         
-    def _handel_rigid_body_boundries(self , body):
+    def _handle_rigid_body_boundries(self , body):
         vertices = body.get_world_vertices()
         if not vertices:
             return
@@ -146,4 +148,69 @@ class World:
                     p1.velocity.y += (impulse / p1.mass) * ny
                     p2.velocity.x -= (impulse / p2.mass) * nx
                     p2.velocity.y -= (impulse / p2.mass) * ny
-                        
+
+    def _resolve_rigid_body_collision(self, b1, b2, result):
+        normal = list(result["normal"])
+        depth = result["depth"]
+
+        # ensure normal points from b2 to b1
+        direction_x = b1.position.x - b2.position.x
+        direction_y = b1.position.y - b2.position.y
+        dot = direction_x * normal[0] + direction_y * normal[1]
+        if dot < 0:
+            normal[0] = -normal[0]
+            normal[1] = -normal[1]
+
+        # mass weighted position correction
+        total_mass = b1.mass + b2.mass
+        slop = 0.5  # ignore tiny penetrations
+        correction = 0.2
+        corrected_depth = max(depth - slop, 0)
+        b1.position.x += normal[0] * corrected_depth * (b2.mass / total_mass) * correction
+        b1.position.y += normal[1] * corrected_depth * (b2.mass / total_mass) * correction
+        b2.position.x -= normal[0] * corrected_depth * (b1.mass / total_mass) * correction
+        b2.position.y -= normal[1] * corrected_depth * (b1.mass / total_mass) * correction
+
+        # relative velocity
+        rel_vel_x = b1.velocity.x - b2.velocity.x
+        rel_vel_y = b1.velocity.y - b2.velocity.y
+        vel_along_normal = rel_vel_x * normal[0] + rel_vel_y * normal[1]
+
+        # only resolve if approaching
+        if vel_along_normal > 0:
+            return
+
+        # impulse
+        impulse_scalar = -(1 + self.restitution) * vel_along_normal
+        impulse_scalar /= (1/b1.mass + 1/b2.mass)
+
+        b1.velocity.x += (impulse_scalar / b1.mass) * normal[0]
+        b1.velocity.y += (impulse_scalar / b1.mass) * normal[1]
+        b2.velocity.x -= (impulse_scalar / b2.mass) * normal[0]
+        b2.velocity.y -= (impulse_scalar / b2.mass) * normal[1]
+
+        tangent = (-normal[1], normal[0])
+        vel_along_tangent = rel_vel_x * tangent[0] + rel_vel_y * tangent[1]
+        friction_scalar = -vel_along_tangent / (1/b1.mass + 1/b2.mass)
+        mu = 0.3
+        if abs(friction_scalar) > abs(impulse_scalar * mu):
+            friction_scalar = impulse_scalar * mu * (1 if vel_along_tangent > 0 else -1)
+        b1.velocity.x += (friction_scalar / b1.mass) * tangent[0]
+        b1.velocity.y += (friction_scalar / b1.mass) * tangent[1]
+        b2.velocity.x -= (friction_scalar / b2.mass) * tangent[0]
+        b2.velocity.y -= (friction_scalar / b2.mass) * tangent[1]
+
+        # angular effect from friction
+        r1 = depth / 2
+        r2 = depth / 2
+        b1.angular_velocity += (friction_scalar * r1) / b1.moment_of_inertia * 0.1
+        b2.angular_velocity -= (friction_scalar * r2) / b2.moment_of_inertia * 0.1
+
+    def _handle_rigid_body_collisions(self):
+        for i in range(len(self.rigid_bodies)):
+            for j in range(i+1, len(self.rigid_bodies)):
+                b1 = self.rigid_bodies[i]
+                b2 = self.rigid_bodies[j]
+                result = b1.sat_collision(b2)
+                if result:
+                    self._resolve_rigid_body_collision(b1, b2, result)
