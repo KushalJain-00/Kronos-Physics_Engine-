@@ -47,10 +47,37 @@ class Renderer:
         screen_vertices = [self.to_screen(x , y) for x , y in vertices]
         pygame.draw.polygon(self.screen , body.color , screen_vertices , 2)
 
+    def draw_sat_debug(self, body):
+        vertices = body.get_world_vertices()
+        axes = body.get_axes()
+        cx, cy = self.to_screen(body.position.x, body.position.y)
+        
+        for axis in axes:
+            # normalize axis
+            length = (axis[0]**2 + axis[1]**2) ** 0.5
+            if length == 0:
+                continue
+            nx, ny = axis[0]/length, axis[1]/length
+            
+            # draw axis line through center
+            scale = 60
+            x1 = int(cx - nx * scale)
+            y1 = int(cy + ny * scale)  # flip y
+            x2 = int(cx + nx * scale)
+            y2 = int(cy - ny * scale)  # flip y
+            pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
+
     def run(self):
+        accumulator = 0.0
+        physics_dt = 0.008
+        last_time = pygame.time.get_ticks() / 1000.0
         running = True
         while running:
-            self.world.step()
+            current_time = pygame.time.get_ticks() / 1000.0
+            frame_time = min(current_time - last_time , 0.05)
+            last_time = current_time
+            accumulator += frame_time
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -71,8 +98,10 @@ class Renderer:
                     particle = Particle(wx, wy, mass, color=color)
                     # particle.velocity = Vector2D(random.uniform(-50, 50), random.uniform(0, 150))
                     self.world.add_particle(particle)
-
-            self.world.step()
+            
+            while accumulator >= physics_dt:
+                self.world.step(physics_dt)
+                accumulator -= physics_dt
 
             self.screen.fill((0, 0, 0))
             self.draw_grid()
@@ -82,6 +111,7 @@ class Renderer:
                 self.draw_particle(p)
             for body in self.world.rigid_bodies:
                 self.draw_rigid_body(body)
+                self.draw_sat_debug(body)
             pygame.display.flip()
             self.clock.tick(60)
 
