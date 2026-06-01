@@ -60,8 +60,10 @@ class RigidBody:
             p1 = vertices[i]
             p2 = vertices[(i+1) % n]
             edge = (p2[0] - p1[0], p2[1] - p1[1])
-            normal = (-edge[1], edge[0])
-            normals.append(normal)
+            length = (edge[0]**2 + edge[1]**2) ** 0.5
+            if length > 0:
+                normal = (-edge[1] / length, edge[0] / length)
+                normals.append(normal)
         return normals
 
     def project_onto_axis(self, axis):
@@ -85,7 +87,8 @@ class RigidBody:
         length = (best_axis[0]**2 + best_axis[1]**2) ** 0.5
         if length == 0:
             return None
-        normal = (best_axis[0]/length, best_axis[1]/length)
+        axis_len = (best_axis[0]**2 + best_axis[1]**2) ** 0.5
+        normal = (best_axis[0]/axis_len, best_axis[1]/axis_len)
         return {"normal": normal, "depth": min_overlap}
 
     def update(self, dt):

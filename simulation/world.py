@@ -203,8 +203,10 @@ class World:
         # angular effect from friction
         r1 = depth / 2
         r2 = depth / 2
-        b1.angular_velocity += (friction_scalar * r1) / b1.moment_of_inertia * 0.1
-        b2.angular_velocity -= (friction_scalar * r2) / b2.moment_of_inertia * 0.1
+        if b1.moment_of_inertia > 0:
+            b1.angular_velocity += (friction_scalar * r1) / b1.moment_of_inertia * 0.1
+        if b2.moment_of_inertia > 0:
+            b2.angular_velocity -= (friction_scalar * r2) / b2.moment_of_inertia * 0.1
 
     def _handle_rigid_body_collisions(self):
         for i in range(len(self.rigid_bodies)):
