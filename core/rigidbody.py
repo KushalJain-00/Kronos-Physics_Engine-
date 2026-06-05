@@ -106,3 +106,60 @@ class RigidBody:
         self.angular_acceleration = 0.0
         self.time += dt
 
+    def find_contact_point(self, other):
+        best_point = None
+        best_depth = -float('inf')
+        
+        # check each vertex of other — is it inside self?
+        axes = self.get_axes()
+        for vertex in other.get_world_vertices():
+            depth = float('inf')
+            inside = True
+            for i, axis in enumerate(axes):
+                proj = vertex[0] * axis[0] + vertex[1] * axis[1]    # project vertex onto axis
+                min_s, max_s = self.project_onto_axis(axis)     # project self onto axis
+                if proj < min_s or proj > max_s:
+                    inside = False
+                    break
+                # how deep is this vertex inside self along this axis
+                d = min(proj - min_s, max_s - proj)
+                depth = min(depth, d)
+            if inside and depth > best_depth:
+                best_depth = depth
+                best_point = vertex
+        return best_point
+    
+    def particle_collision(self, particle):
+        vertices = self.get_world_vertices()
+        n = len(vertices)
+        min_dist = float('inf')
+        best_normal = None
+        best_depth = 0
+        
+        for i in range(n):
+            ax, ay = vertices[i]
+            bx, by = vertices[(i+1) % n]
+            px, py = particle.position.x, particle.position.y
+            
+            # closest point on this edge to particle center
+            dx, dy = bx - ax, by - ay
+            t = ((px - ax) * dx + (py - ay) * dy) / (dx*dx + dy*dy + 1e-10)
+            t = max(0.0, min(1.0, t))
+            cx = ax + t * dx
+            cy = ay + t * dy
+            
+            # distance from particle center to closest point
+            dist = math.sqrt((px - cx)**2 + (py - cy)**2)
+            
+            if dist < min_dist:
+                min_dist = dist
+                if dist > 1e-10:
+                    best_normal = ((px - cx) / dist, (py - cy) / dist)
+                    best_depth = particle.radius - dist
+                else:
+                    best_normal = (0.0 , 0.1)
+                    best_depth = particle.radius
+        
+        if min_dist < particle.radius:
+            return {"normal": best_normal, "depth": best_depth}
+        return None
