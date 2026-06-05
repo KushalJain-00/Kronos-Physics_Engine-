@@ -187,7 +187,7 @@ class World:
         vel_along_tangent = rel_vel_x * tangent[0] + rel_vel_y * tangent[1]
         friction_scalar = -vel_along_tangent / (1/b1.mass + 1/b2.mass)
         if abs(friction_scalar) > abs(impulse_scalar * self.mu):
-            friction_scalar = impulse_scalar * self.mu * (1 if vel_along_tangent > 0 else -1)
+            friction_scalar = -impulse_scalar * self.mu * (1 if vel_along_tangent > 0 else -1)
         b1.velocity.x += (friction_scalar / b1.mass) * tangent[0]
         b1.velocity.y += (friction_scalar / b1.mass) * tangent[1]
         b2.velocity.x -= (friction_scalar / b2.mass) * tangent[0]
@@ -215,7 +215,7 @@ class World:
             b1.angular_velocity += torque1 / b1.moment_of_inertia
         if b2.moment_of_inertia > 0:
             torque2 = r2x * impulse_scalar * normal[1] - r2y * impulse_scalar * normal[0]
-            b2.angular_velocity -= torque2 / b2.moment_of_inertia * 0.1
+            b2.angular_velocity -= torque2 / b2.moment_of_inertia
 
     def _handle_rigid_body_collisions(self):
         for i in range(len(self.rigid_bodies)):
@@ -278,6 +278,12 @@ class World:
         r_x = contact_x - body.position.x
         r_y = contact_y - body.position.y
 
+        body_surface_velocity_x = body.velocity.x - body.angular_velocity * r_y
+        body_surface_velocity_y = body.velocity.y + body.angular_velocity * r_x
+
+        relative_vel_x = particle.velocity.x - body_surface_velocity_x
+        relative_vel_y = particle.velocity.y - body_surface_velocity_y
+
         # torque = r cross impulse
         if body.moment_of_inertia > 0:
             torque = r_x * (-impulse_scalar * normal[1]) - r_y * (-impulse_scalar * normal[0])
@@ -288,5 +294,4 @@ class World:
             for particle in self.particles:
                 result = body.particle_collision(particle)
                 if result:
-                    print(f"collision detected: normal={result['normal']}, depth={result['depth']}")
                     self._resolve_particle_rigid_body_collision(particle, body, result)
