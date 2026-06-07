@@ -7,6 +7,7 @@ class World:
         self.particles = []
         self.springs = []
         self.rigid_bodies = []
+        self.constraints = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
         self.rigid_body_restitution = 0.5 
@@ -23,6 +24,9 @@ class World:
     def add_rigid_bodies(self , body):
         self.rigid_bodies.append(body)
 
+    def add_constraint(self , constraint):
+        self.constraints.append(constraint)
+
     def step(self, dt=None):
         if dt is None:
             dt = self.dt
@@ -37,6 +41,9 @@ class World:
             spring.apply_spring_force()
         
         for p in self.particles:
+            if hasattr(p, 'pinned') and p.pinned:
+                p.acceleration = Vector2D(0, 0)
+                continue
             drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
             p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
             p.apply_force(drag_force)
@@ -56,6 +63,10 @@ class World:
             self._handle_collisions()
             self._handle_rigid_body_collisions()
             self._handle_particle_rigid_body_collisions()
+        
+        for _ in range(5):
+            for constraint in self.constraints:
+                constraint.solve()
 
     def _handle_boundaries(self, p):
         # Lower Boundry for Particle

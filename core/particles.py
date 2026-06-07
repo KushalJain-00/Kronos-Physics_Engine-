@@ -11,6 +11,7 @@ class Particle:
         self.velocity = Vector2D(0 , 0)
         self.acceleration = Vector2D(0 , 0)
         self.old_acceleration = Vector2D(0 , 0)
+        self.pinned = False
         self.color = color
     
     def apply_force(self , force):
@@ -18,6 +19,8 @@ class Particle:
         self.acceleration.y += force.y / self.mass
     
     def update(self , dt):
+        if self.pinned:
+            return
         self.old_acceleration = Vector2D(self.acceleration.x , self.acceleration.y)
         self.position.x += self.velocity.x * dt + 0.5 * self.acceleration.x * dt**2
         self.position.y += self.velocity.y * dt + 0.5 * self.acceleration.y * dt**2
