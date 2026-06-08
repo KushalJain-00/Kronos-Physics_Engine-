@@ -6,7 +6,11 @@ class DistanceConstraint:
         self.body_b = body_b
         self.anchor_a = anchor_a
         self.anchor_b = anchor_b
+        if rest_length <= 0:
+            raise ValueError("rest_length must be > 0")
         self.rest_length = rest_length
+        if stiffness < 0 or stiffness > 1:
+            raise ValueError("stiffness must be between 0 and 1")
         self.stiffness = stiffness
 
     def _get_world_anchor(self, body, anchor):
@@ -58,6 +62,11 @@ class DistanceConstraint:
             self.body_a.position.y += correction_y * mass_ratio_a
             self.body_b.position.x -= correction_x * mass_ratio_b
             self.body_b.position.y -= correction_y * mass_ratio_b
+            # velocity update immediately here
+            self.body_a.velocity.x += correction_x * mass_ratio_a
+            self.body_a.velocity.y += correction_y * mass_ratio_a
+            self.body_b.velocity.x -= correction_x * mass_ratio_b
+            self.body_b.velocity.y -= correction_y * mass_ratio_b
         # update velocities to match position correction
         if not a_pinned and not b_pinned:
             self.body_a.velocity.x += correction_x * mass_ratio_a

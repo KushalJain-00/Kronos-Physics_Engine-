@@ -20,12 +20,12 @@ p1 = Particle(400, 200, 1.0)
 # constraint4 = DistanceConstraint(p4 , p5 , (1,0) , (0,0) , 100 , 0.3)
 body = RigidBody(400, 300, 1.0, 0.0)
 body.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
-body.angular_velocity = 10.0
-# body2 = RigidBody(450, 350, 1.0, 0.0)
-# body2.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
-# body2.angular_velocity = 1.0 
-constraint = DistanceConstraint(p1 , body , (0,0) , (50,25) , 100)
-world.add_particle(p1)
+body.angular_velocity = 1.0
+body2 = RigidBody(450, 350, 1.0, 0.0)
+body2.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
+body2.angular_velocity = 1.0 
+constraint = DistanceConstraint(body , body2 , (50,25) , (50,25) , 100)
+# world.add_particle(p1)
 # world.add_particle(p2)
 # world.add_particle(p3)
 # world.add_particle(p4)
@@ -36,7 +36,7 @@ world.add_particle(p1)
 # world.add_constraint(constraint3)
 # world.add_constraint(constraint4)
 world.add_rigid_bodies(body)
-# world.add_rigid_bodies(body2)
+world.add_rigid_bodies(body2)
 world.add_constraint(constraint)
 
 renderer.run()

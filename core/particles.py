@@ -20,6 +20,7 @@ class Particle:
     
     def update(self , dt):
         if self.pinned:
+            self.time += dt
             return
         self.old_acceleration = Vector2D(self.acceleration.x , self.acceleration.y)
         self.position.x += self.velocity.x * dt + 0.5 * self.acceleration.x * dt**2
