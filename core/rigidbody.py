@@ -157,7 +157,7 @@ class RigidBody:
                     best_normal = ((px - cx) / dist, (py - cy) / dist)
                     best_depth = particle.radius - dist
                 else:
-                    best_normal = (0.0 , 0.1)
+                    best_normal = (0.0 , 1.0)
                     best_depth = particle.radius
         
         if min_dist < particle.radius:
