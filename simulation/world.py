@@ -1,4 +1,5 @@
 from core.vectors import Vector2D
+import threading
 
 class World:
     def __init__(self, width, height):
@@ -14,6 +15,9 @@ class World:
         self.drag_coefficient = 0
         self.mu = 0.1
         self.dt = 0.1
+        self.paused = False
+        self.lock = threading.Lock()
+        self.selected = None
 
     def add_particle(self, particle):
         self.particles.append(particle)
@@ -27,54 +31,55 @@ class World:
     def add_constraint(self , constraint):
         self.constraints.append(constraint)
 
+    def clear(self):
+        self.particles = []
+        self.springs = []
+        self.rigid_bodies = []
+        self.constraints = []
+    
     def step(self, dt=None):
-        if dt is None:
-            dt = self.dt
-        
-        for body in self.rigid_bodies:
-            body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
-            body.update(dt)
-            body.angular_velocity *= (0.99 ** (dt / 0.016))
-            self._handle_rigid_body_boundries(body)
-        
-        for spring in self.springs:
-            spring.apply_spring_force()
-        
-        for p in self.particles:
-            if hasattr(p, 'pinned') and p.pinned:
-                p.acceleration = Vector2D(0, 0)
-                continue
-            drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
-            p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
-            p.apply_force(drag_force)
-            p.update(dt)
-            self._handle_boundaries(p)
-        
-        for i in range(len(self.rigid_bodies)):
-            for j in range(i+1, len(self.rigid_bodies)):
-                b1 = self.rigid_bodies[i]
-                b2 = self.rigid_bodies[j]
-                result = b1.sat_collision(b2)
-                if result:
-                    self._correct_rigid_body_positions(b1, b2, result)
-
-        for _ in range(8):
-            self._handle_collisions()
-            self._handle_rigid_body_collisions()
-            self._handle_particle_rigid_body_collisions()
-        
-        for _ in range(5):
-            for constraint in self.constraints:
-                constraint.solve()
-        
-        # re-check boundaries after constraints
-        for p in self.particles:
-            if not (hasattr(p, 'pinned') and p.pinned):
+        with self.lock:
+            if self.paused:
+                return
+            if dt is None:
+                dt = self.dt
+            
+            for body in self.rigid_bodies:
+                body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
+                body.update(dt)
+                body.angular_velocity *= (0.99 ** (dt / 0.016))
+                self._handle_rigid_body_boundries(body)
+            
+            for spring in self.springs:
+                spring.apply_spring_force()
+            
+            for p in self.particles:
+                if hasattr(p, 'pinned') and p.pinned:
+                    p.acceleration = Vector2D(0, 0)
+                    continue
+                drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
+                p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
+                p.apply_force(drag_force)
+                p.update(dt)
                 self._handle_boundaries(p)
-        for body in self.rigid_bodies:
-            self._handle_rigid_body_boundries(body)
+            
+            for i in range(len(self.rigid_bodies)):
+                for j in range(i+1, len(self.rigid_bodies)):
+                    b1 = self.rigid_bodies[i]
+                    b2 = self.rigid_bodies[j]
+                    result = b1.sat_collision(b2)
+                    if result:
+                        self._correct_rigid_body_positions(b1, b2, result)
 
-
+            for _ in range(8):
+                self._handle_collisions()
+                self._handle_rigid_body_collisions()
+                self._handle_particle_rigid_body_collisions()
+            
+            for _ in range(5):
+                for constraint in self.constraints:
+                    constraint.solve()
+            
     def _handle_boundaries(self, p):
         # Lower Boundry for Particle
         if p.position.y <= p.radius:
