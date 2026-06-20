@@ -8,6 +8,10 @@ class ControlPanel:
         self.world = world
         self.running = False
         self.thread = None
+        self.frame_count = 0
+        self.vel_x_history = []
+        self.vel_y_history = []
+        self.max_history = 200
     
     def build(self):
         dpg.create_context()
@@ -40,14 +44,26 @@ class ControlPanel:
             dpg.add_text("Selected: None", tag="selected_info")
             dpg.add_text("Velocity: -", tag="selected_velocity")
             dpg.add_text("Acceleration: -", tag="selected_acceleration")
-        
+
+            dpg.add_separator()
+            dpg.add_text("Live Graph - Selected Object")
+            with dpg.plot(label = "Velocity over time" , height = 200 , width = 350):
+                # DearPyGui requires series to be children of a plot axis.
+                # Create explicit X and Y axes and attach the series to the Y axis.
+                with dpg.plot_axis(dpg.mvXAxis, label="Frame"):
+                    pass
+                with dpg.plot_axis(dpg.mvYAxis, label="Velocity"):
+                    # initialize series with a single zero point to avoid exceptions
+                    dpg.add_line_series([0], [0], label = "Vel_x" , tag = "vel_x_series")
+                    dpg.add_line_series([0], [0], label = "Vel_y" , tag = "vel_y_series")
+
         dpg.setup_dearpygui()
         dpg.show_viewport()
     
     def _toggle_pause(self):
         with self.world.lock:
             self.world.paused = not getattr(self.world, 'paused', False)
-    
+            
     def _clear_world(self):
         with self.world.lock:
             self.world.clear()
@@ -93,6 +109,18 @@ class ControlPanel:
             dpg.set_value("selected_info", f"Selected Particle: Mass={selected.mass}, Position=({selected.position.x:.1f}, {selected.position.y:.1f})")
         elif isinstance(selected, RigidBody):
             dpg.set_value("selected_info", f"Selected RigidBody: Mass={selected.mass}, Position=({selected.position.x:.1f}, {selected.position.y:.1f})")
+        if selected is not None:
+            self.frame_count += 1
+            self.vel_x_history.append(selected.velocity.x)
+            self.vel_y_history.append(selected.velocity.y)
+            
+            if len(self.vel_x_history) > self.max_history:
+                self.vel_x_history.pop(0)
+                self.vel_y_history.pop(0)
+            
+            x_axis = list(range(len(self.vel_x_history)))
+            dpg.set_value("vel_x_series", [x_axis, self.vel_x_history])
+            dpg.set_value("vel_y_series", [x_axis, self.vel_y_history])
 
     def run(self):
         self.build()
