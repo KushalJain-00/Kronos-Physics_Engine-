@@ -79,20 +79,20 @@ class Renderer:
         return inside
 
     def _try_select(self, wx, wy):
-        for p in self.world.particles:
-            dist = ((p.position.x - wx)**2 + (p.position.y - wy)**2) ** 0.5
-            if dist <= p.radius:
-                with self.world.lock:
-                    self.world.selected = p
-                return
-        for body in self.world.rigid_bodies:
-            vertices = body.get_world_vertices()
-            if vertices and self._point_in_polygon(wx, wy, vertices):
-                with self.world.lock:
-                    self.world.selected = body
-                return
+        selected = None
         with self.world.lock:
-            self.world.selected = None
+            for p in self.world.particles:
+                dist = ((p.position.x - wx)**2 + (p.position.y - wy)**2) ** 0.5
+                if dist <= p.radius:
+                    selected = p
+                    break
+            if selected is None:
+                for body in self.world.rigid_bodies:
+                    vertices = body.get_world_vertices()
+                    if vertices and self._point_in_polygon(wx, wy, vertices):
+                        selected = body
+                        break
+            self.world.selected = selected
 
     def run(self):
         accumulator = 0.0
