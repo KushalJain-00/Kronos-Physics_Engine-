@@ -50,7 +50,6 @@ class World:
             p.update(dt)
             self._handle_boundaries(p)
         
-        # position correction once
         for i in range(len(self.rigid_bodies)):
             for j in range(i+1, len(self.rigid_bodies)):
                 b1 = self.rigid_bodies[i]
@@ -67,6 +66,14 @@ class World:
         for _ in range(5):
             for constraint in self.constraints:
                 constraint.solve()
+        
+        # re-check boundaries after constraints
+        for p in self.particles:
+            if not (hasattr(p, 'pinned') and p.pinned):
+                self._handle_boundaries(p)
+        for body in self.rigid_bodies:
+            self._handle_rigid_body_boundries(body)
+
 
     def _handle_boundaries(self, p):
         # Lower Boundry for Particle
