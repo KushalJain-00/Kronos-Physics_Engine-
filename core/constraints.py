@@ -62,12 +62,6 @@ class DistanceConstraint:
             self.body_a.position.y += correction_y * mass_ratio_a
             self.body_b.position.x -= correction_x * mass_ratio_b
             self.body_b.position.y -= correction_y * mass_ratio_b
-            # velocity update immediately here
-            self.body_a.velocity.x += correction_x * mass_ratio_a
-            self.body_a.velocity.y += correction_y * mass_ratio_a
-            self.body_b.velocity.x -= correction_x * mass_ratio_b
-            self.body_b.velocity.y -= correction_y * mass_ratio_b
-        # update velocities to match position correction
         if not a_pinned and not b_pinned:
             self.body_a.velocity.x += correction_x * mass_ratio_a
             self.body_a.velocity.y += correction_y * mass_ratio_a
@@ -79,3 +73,77 @@ class DistanceConstraint:
         elif b_pinned:
             self.body_a.velocity.x += correction_x
             self.body_a.velocity.y += correction_y
+
+class HingeConstraint:
+    def __init__(self, body_a , body_b , anchor_a , anchor_b):
+        self.body_a = body_a
+        self.body_b = body_b
+        self.anchor_a = anchor_a
+        self.anchor_b = anchor_b
+    
+    def _get_world_anchor(self, body, anchor):
+        if hasattr(body, 'angle'):
+            cos_a = math.cos(body.angle)
+            sin_a = math.sin(body.angle)
+            rx = anchor[0] * cos_a - anchor[1] * sin_a
+            ry = anchor[0] * sin_a + anchor[1] * cos_a
+            return (body.position.x + rx, body.position.y + ry)
+        else:
+            return (body.position.x + anchor[0], body.position.y + anchor[1])
+    
+    def solve(self):
+        world_anchor_a = self._get_world_anchor(self.body_a, self.anchor_a)
+        world_anchor_b = self._get_world_anchor(self.body_b, self.anchor_b)
+        
+        delta_x = world_anchor_b[0] - world_anchor_a[0]
+        delta_y = world_anchor_b[1] - world_anchor_a[1]
+        
+        r_a = (world_anchor_a[0] - self.body_a.position.x, world_anchor_a[1] - self.body_a.position.y)
+        r_b = (world_anchor_b[0] - self.body_b.position.x, world_anchor_b[1] - self.body_b.position.y)
+
+        a_pinned = getattr(self.body_a, 'pinned', False)
+        b_pinned = getattr(self.body_b, 'pinned', False)
+        if a_pinned and b_pinned:
+            return
+
+        I_a = getattr(self.body_a, 'moment_of_inertia', 0)
+        I_b = getattr(self.body_b, 'moment_of_inertia', 0)
+
+        n = (delta_x, delta_y)
+        n_length = (n[0]**2 + n[1]**2) ** 0.5
+        if n_length == 0:
+            return
+
+        n_unit = (n[0] / n_length, n[1] / n_length)
+        cross_a = r_a[0] * n_unit[1] - r_a[1] * n_unit[0]
+        cross_b = r_b[0] * n_unit[1] - r_b[1] * n_unit[0]
+
+        inv_mass_a = 0.0 if a_pinned else 1 / self.body_a.mass
+        inv_mass_b = 0.0 if b_pinned else 1 / self.body_b.mass
+
+        w_a = inv_mass_a + ((cross_a**2) / I_a if I_a > 0 and not a_pinned else 0)
+        w_b = inv_mass_b + ((cross_b**2) / I_b if I_b > 0 and not b_pinned else 0)
+        if w_a + w_b == 0:
+            return
+
+        constraint_error = n_length
+        lambda_ = constraint_error / (w_a + w_b)
+
+        if not a_pinned:
+            self.body_a.position.x += n_unit[0] * (inv_mass_a * lambda_)
+            self.body_a.position.y += n_unit[1] * (inv_mass_a * lambda_)
+            self.body_a.velocity.x += n_unit[0] * (inv_mass_a * lambda_)
+            self.body_a.velocity.y += n_unit[1] * (inv_mass_a * lambda_)
+            if I_a > 0:
+                self.body_a.angle += cross_a * lambda_ / I_a
+                self.body_a.angular_velocity += cross_a * lambda_ / I_a
+
+        if not b_pinned:
+            self.body_b.position.x -= n_unit[0] * (inv_mass_b * lambda_)
+            self.body_b.position.y -= n_unit[1] * (inv_mass_b * lambda_)
+            self.body_b.velocity.x -= n_unit[0] * (inv_mass_b * lambda_)
+            self.body_b.velocity.y -= n_unit[1] * (inv_mass_b * lambda_)
+            if I_b > 0:
+                self.body_b.angle += -cross_b * lambda_ / I_b
+                self.body_b.angular_velocity += -cross_b * lambda_ / I_b
+       
