@@ -67,18 +67,32 @@ class Renderer:
             y2 = int(cy - ny * scale)  # flip y
             pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
 
+    def _point_in_polygon(self, x, y, vertices):
+        inside = False
+        for i in range(len(vertices)):
+            j = (i + 1) % len(vertices)
+            xi, yi = vertices[i]
+            xj, yj = vertices[j]
+            intersect = ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+            if intersect:
+                inside = not inside
+        return inside
+
     def _try_select(self, wx, wy):
         for p in self.world.particles:
             dist = ((p.position.x - wx)**2 + (p.position.y - wy)**2) ** 0.5
             if dist <= p.radius:
-                self.world.selected = p
+                with self.world.lock:
+                    self.world.selected = p
                 return
         for body in self.world.rigid_bodies:
-            dist = ((body.position.x - wx)**2 + (body.position.y - wy)**2) ** 0.5
-            if dist <= 50:  # approximate for now
-                self.world.selected = body
+            vertices = body.get_world_vertices()
+            if vertices and self._point_in_polygon(wx, wy, vertices):
+                with self.world.lock:
+                    self.world.selected = body
                 return
-        self.world.selected = None
+        with self.world.lock:
+            self.world.selected = None
 
     def run(self):
         accumulator = 0.0

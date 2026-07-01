@@ -60,11 +60,11 @@ class ControlPanel:
         dpg.setup_dearpygui()
         dpg.show_viewport()
     
-    def _toggle_pause(self):
+    def _toggle_pause(self, sender, app_data):
         with self.world.lock:
             self.world.paused = not getattr(self.world, 'paused', False)
             
-    def _clear_world(self):
+    def _clear_world(self, sender, app_data):
         with self.world.lock:
             self.world.clear()
     
@@ -85,13 +85,14 @@ class ControlPanel:
             particles = list(self.world.particles)
             bodies = list(self.world.rigid_bodies)
             constraints = len(self.world.constraints)
+            gravity_strength = -self.world.gravity.y if self.world.gravity.y < 0 else self.world.gravity.y
         dpg.set_value("particle_count", f"Particles: {len(particles)}")
         dpg.set_value("body_count", f"Rigid Bodies: {len(bodies)}")
         dpg.set_value("constraint_count", f"Constraints: {constraints}")
         
         # energy
         ke = sum(0.5 * p.mass * (p.velocity.x**2 + p.velocity.y**2) for p in particles)
-        pe = sum(p.mass * 9.8 * (p.position.y - p.radius) for p in self.world.particles)
+        pe = sum(p.mass * gravity_strength * (p.position.y - p.radius) for p in particles)
         dpg.set_value("ke_display", f"Kinetic Energy: {ke:.1f}")
         dpg.set_value("pe_display", f"Potential Energy: {pe:.1f}")
 
@@ -105,22 +106,29 @@ class ControlPanel:
             dpg.set_value("selected_acceleration", f"Acceleration: ({selected.acceleration.x:.2f}, {selected.acceleration.y:.2f})")
         if selected is None:
             dpg.set_value("selected_info", "Selected: None")
+            dpg.set_value("selected_velocity", "Velocity: -")
+            dpg.set_value("selected_acceleration", "Acceleration: -")
+            self.frame_count = 0
+            self.vel_x_history = []
+            self.vel_y_history = []
+            dpg.set_value("vel_x_series", [[], []])
+            dpg.set_value("vel_y_series", [[], []])
+            return
         elif isinstance(selected, Particle):
             dpg.set_value("selected_info", f"Selected Particle: Mass={selected.mass}, Position=({selected.position.x:.1f}, {selected.position.y:.1f})")
         elif isinstance(selected, RigidBody):
             dpg.set_value("selected_info", f"Selected RigidBody: Mass={selected.mass}, Position=({selected.position.x:.1f}, {selected.position.y:.1f})")
-        if selected is not None:
-            self.frame_count += 1
-            self.vel_x_history.append(selected.velocity.x)
-            self.vel_y_history.append(selected.velocity.y)
+        self.frame_count += 1
+        self.vel_x_history.append(selected.velocity.x)
+        self.vel_y_history.append(selected.velocity.y)
             
-            if len(self.vel_x_history) > self.max_history:
-                self.vel_x_history.pop(0)
-                self.vel_y_history.pop(0)
+        if len(self.vel_x_history) > self.max_history:
+            self.vel_x_history.pop(0)
+            self.vel_y_history.pop(0)
             
-            x_axis = list(range(len(self.vel_x_history)))
-            dpg.set_value("vel_x_series", [x_axis, self.vel_x_history])
-            dpg.set_value("vel_y_series", [x_axis, self.vel_y_history])
+        x_axis = list(range(len(self.vel_x_history)))
+        dpg.set_value("vel_x_series", [x_axis, self.vel_x_history])
+        dpg.set_value("vel_y_series", [x_axis, self.vel_y_history])
 
     def run(self):
         self.build()

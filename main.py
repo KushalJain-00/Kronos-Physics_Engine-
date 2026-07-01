@@ -8,7 +8,6 @@ from ui.control_panel import ControlPanel
 
 world = World(800, 600)
 panel = ControlPanel(world)
-panel.start()
 renderer = Renderer(world)
 
 body = RigidBody(400, 300, 1.0, 0.0)
@@ -21,7 +20,7 @@ body3 = RigidBody(500, 300, 1.0, 0.0)
 body3.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
 body3.angular_velocity = 1.0
 
-constraint = HingeConstraint(body , body2 , (50,25) , (50,25))
+constraint = HingeConstraint(body , body2 , (50,25) , (25,-25))
 constraint2 = HingeConstraint(body2 , body3 , (-50,25) , (-50,25))
 
 world.add_rigid_bodies(body)

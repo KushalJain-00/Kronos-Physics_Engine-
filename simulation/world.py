@@ -20,22 +20,28 @@ class World:
         self.selected = None
 
     def add_particle(self, particle):
-        self.particles.append(particle)
+        with self.lock:
+            self.particles.append(particle)
 
     def add_spring(self , spring):
-        self.springs.append(spring)
+        with self.lock:
+            self.springs.append(spring)
 
     def add_rigid_bodies(self , body):
-        self.rigid_bodies.append(body)
+        with self.lock:
+            self.rigid_bodies.append(body)
 
     def add_constraint(self , constraint):
-        self.constraints.append(constraint)
+        with self.lock:
+            self.constraints.append(constraint)
 
     def clear(self):
-        self.particles = []
-        self.springs = []
-        self.rigid_bodies = []
-        self.constraints = []
+        with self.lock:
+            self.particles = []
+            self.springs = []
+            self.rigid_bodies = []
+            self.constraints = []
+            self.selected = None
     
     def step(self, dt=None):
         with self.lock:
@@ -56,6 +62,7 @@ class World:
             for p in self.particles:
                 if hasattr(p, 'pinned') and p.pinned:
                     p.acceleration = Vector2D(0, 0)
+                    p.update(dt)
                     continue
                 drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
                 p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
