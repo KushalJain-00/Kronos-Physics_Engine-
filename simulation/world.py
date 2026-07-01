@@ -206,15 +206,16 @@ class World:
         b2.velocity.x -= (impulse_scalar / b2.mass) * normal[0]
         b2.velocity.y -= (impulse_scalar / b2.mass) * normal[1]
 
-        tangent = (-normal[1], normal[0])
-        vel_along_tangent = rel_vel_x * tangent[0] + rel_vel_y * tangent[1]
-        friction_scalar = -vel_along_tangent / (1/b1.mass + 1/b2.mass)
-        if abs(friction_scalar) > abs(impulse_scalar * self.mu):
-            friction_scalar = -impulse_scalar * self.mu * (1 if vel_along_tangent > 0 else -1)
-        b1.velocity.x += (friction_scalar / b1.mass) * tangent[0]
-        b1.velocity.y += (friction_scalar / b1.mass) * tangent[1]
-        b2.velocity.x -= (friction_scalar / b2.mass) * tangent[0]
-        b2.velocity.y -= (friction_scalar / b2.mass) * tangent[1]
+        if not self._are_hinged(b1, b2):
+            tangent = (-normal[1], normal[0])
+            vel_along_tangent = rel_vel_x * tangent[0] + rel_vel_y * tangent[1]
+            friction_scalar = -vel_along_tangent / (1/b1.mass + 1/b2.mass)
+            if abs(friction_scalar) > abs(impulse_scalar * self.mu):
+                friction_scalar = -impulse_scalar * self.mu * (1 if vel_along_tangent > 0 else -1)
+            b1.velocity.x += (friction_scalar / b1.mass) * tangent[0]
+            b1.velocity.y += (friction_scalar / b1.mass) * tangent[1]
+            b2.velocity.x -= (friction_scalar / b2.mass) * tangent[0]
+            b2.velocity.y -= (friction_scalar / b2.mass) * tangent[1]
 
         # angular effect from friction
         cp = b1.find_contact_point(b2)
@@ -318,3 +319,11 @@ class World:
                 result = body.particle_collision(particle)
                 if result:
                     self._resolve_particle_rigid_body_collision(particle, body, result)
+
+    def _are_hinged(self, b1, b2):
+        for c in self.constraints:
+            if hasattr(c, 'body_a'):
+                if (c.body_a is b1 and c.body_b is b2) or \
+                (c.body_a is b2 and c.body_b is b1):
+                    return True
+        return False
