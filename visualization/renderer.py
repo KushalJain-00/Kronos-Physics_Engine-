@@ -67,6 +67,19 @@ class Renderer:
             y2 = int(cy - ny * scale)  # flip y
             pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
 
+    def _try_select(self, wx, wy):
+        for p in self.world.particles:
+            dist = ((p.position.x - wx)**2 + (p.position.y - wy)**2) ** 0.5
+            if dist <= p.radius:
+                self.world.selected = p
+                return
+        for body in self.world.rigid_bodies:
+            dist = ((body.position.x - wx)**2 + (body.position.y - wy)**2) ** 0.5
+            if dist <= 50:  # approximate for now
+                self.world.selected = body
+                return
+        self.world.selected = None
+
     def run(self):
         accumulator = 0.0
         physics_dt = 0.008
@@ -82,14 +95,16 @@ class Renderer:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = event.pos
+                    wx, wy = self.from_screen(mx, my)
                     if event.button == 1:
-                        mass = 1.0
+                        self._try_select(wx, wy)
+                        continue
                     elif event.button == 3:
                         mass = 5.0
                     else:
                         continue
-                    mx, my = event.pos
-                    wx, wy = self.from_screen(mx, my)
+
                     color = (
                         random.randint(0, 255),
                         random.randint(0, 255),
