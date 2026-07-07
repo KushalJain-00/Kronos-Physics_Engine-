@@ -9,6 +9,7 @@ class World:
         self.springs = []
         self.rigid_bodies = []
         self.constraints = []
+        self.links = []
         self.gravity = Vector2D(0, -9.8)
         self.restitution = 0.9
         self.rigid_body_restitution = 0.5 
@@ -20,20 +21,19 @@ class World:
         self.selected = None
 
     def add_particle(self, particle):
-        with self.lock:
             self.particles.append(particle)
 
     def add_spring(self , spring):
-        with self.lock:
             self.springs.append(spring)
 
     def add_rigid_bodies(self , body):
-        with self.lock:
             self.rigid_bodies.append(body)
 
     def add_constraint(self , constraint):
-        with self.lock:
             self.constraints.append(constraint)
+    
+    def add_link(self , link):
+            self.links.append(link)
 
     def clear(self):
         with self.lock:
@@ -41,6 +41,7 @@ class World:
             self.springs = []
             self.rigid_bodies = []
             self.constraints = []
+            self.links = []
             self.selected = None
     
     def step(self, dt=None):
@@ -77,6 +78,11 @@ class World:
                     result = b1.sat_collision(b2)
                     if result:
                         self._correct_rigid_body_positions(b1, b2, result)
+                        
+            for link in self.links:
+                link.apply_force(Vector2D(self.gravity.x * link.mass,self.gravity.y * link.mass))
+                link.update(dt)
+                self._handle_boundaries(link)
 
             for _ in range(8):
                 self._handle_collisions()
