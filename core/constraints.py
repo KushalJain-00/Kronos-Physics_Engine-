@@ -1,4 +1,5 @@
 import math
+from core.chains_and_ropes import Link
 
 class DistanceConstraint:
     def __init__(self , body_a , body_b , anchor_a , anchor_b , rest_length , stiffness = 0.5):
@@ -146,4 +147,83 @@ class HingeConstraint:
             if I_b > 0:
                 self.body_b.angle += -cross_b * lambda_ / I_b
                 self.body_b.angular_velocity += -cross_b * lambda_ / I_b
-       
+
+class ChainConstraint:
+    def __init__(self, world, body_a, body_b, anchor_a, anchor_b, n_links, stiffness=0.5, friction=0.1, visible_links=True):        
+        self.world = world
+        self.body_a = body_a
+        self.body_b = body_b
+        self.anchor_a = anchor_a
+        self.anchor_b = anchor_b
+        self.n_links = n_links
+        self.stiffness = stiffness
+        self.friction = friction
+        self.visible_links = visible_links
+        self.links = []
+        self.segments = []
+
+        start = self._get_world_anchor(body_a, anchor_a)
+        end = self._get_world_anchor(body_b, anchor_b)
+
+        for i in range(n_links - 1):
+            t = (i + 1) / n_links
+            x = start[0] + t * (end[0] - start[0])
+            y = start[1] + t * (end[1] - start[1])
+            link = Link(x, y, mass=1.0, friction=friction)
+            self.links.append(link)
+            world.add_link(link)
+
+        total_dist = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
+        link_length = total_dist / n_links
+
+        nodes = [self.body_a] + self.links + [self.body_b]
+        for i in range(len(nodes) - 1):
+            node_a = nodes[i]
+            node_b = nodes[i + 1]
+            seg_anchor_a = (0,0) if isinstance(node_a, Link) else self.anchor_a if i == 0 else (0,0)
+            seg_anchor_b = (0,0) if isinstance(node_b, Link) else self.anchor_b if i == len(nodes) - 2 else (0,0)
+            constraint = DistanceConstraint(node_a, node_b, seg_anchor_a, seg_anchor_b, link_length, stiffness)
+            self.segments.append(constraint)
+    
+    def _get_world_anchor(self, body, anchor):
+        if hasattr(body, 'angle'):
+            # rotate anchor by body angle
+            cos_a = math.cos(body.angle)
+            sin_a = math.sin(body.angle)
+            rx = anchor[0] * cos_a - anchor[1] * sin_a
+            ry = anchor[0] * sin_a + anchor[1] * cos_a
+            return (body.position.x + rx, body.position.y + ry)
+        else:
+            return (body.position.x + anchor[0], body.position.y + anchor[1])    
+
+    def solve(self):
+        for _ in range(4):
+            for segment in self.segments:
+                segment.solve()
+            self._apply_friction()
+    
+    def _apply_friction(self):
+        for i in range(len(self.links) - 1):
+            a = self.links[i]
+            b = self.links[i + 1]
+            dx = b.position.x - a.position.x
+            dy = b.position.y - a.position.y
+            length = (dx**2 + dy**2) ** 0.5
+            if length == 0:
+                continue
+            # Tangetial direction to the segment
+            tx = -dy / length
+            ty = dx / length
+            # Relative velocity in the tangential direction
+            rel_vx = b.velocity.x - a.velocity.x
+            rel_vy = b.velocity.y - a.velocity.y
+            rel_tangential_velocity = rel_vx * tx + rel_vy * ty
+
+            normal_force = a.mass * 9.81
+            max_friction = self.friction * normal_force
+            reduced_mass = 1/((1/a.mass) + (1/b.mass))
+            friction_impulse = max(-max_friction, min(max_friction, -rel_tangential_velocity * reduced_mass))
+            a.velocity.x -= friction_impulse * tx
+            a.velocity.y -= friction_impulse * ty
+            b.velocity.x += friction_impulse * tx
+            b.velocity.y += friction_impulse * ty
