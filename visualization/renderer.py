@@ -67,6 +67,35 @@ class Renderer:
             y2 = int(cy - ny * scale)  # flip y
             pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
 
+    def draw_constraint(self, constraint):
+        from core.constraints import HingeConstraint, DistanceConstraint, ChainConstraint
+        if isinstance(constraint, HingeConstraint):
+            self._draw_hinge(constraint)
+        elif isinstance(constraint, DistanceConstraint):
+            self._draw_distance(constraint)
+        elif isinstance(constraint, ChainConstraint):
+            self._draw_chain(constraint)
+    
+    def _draw_hinge(self , constraint):
+        anchor = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
+        sx ,sy = self.to_screen(anchor[0] , anchor[1])
+        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 1)
+
+    def _draw_distance(self , constraint):
+        anchor_a = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
+        anchor_b = constraint._get_world_anchor(constraint.body_b, constraint.anchor_b)
+        sx1 , sy1 = self.to_screen(anchor_a[0] , anchor_a[1])
+        sx2 , sy2 = self.to_screen(anchor_b[0] , anchor_b[1])
+        pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
+
+    def _draw_chain(self , constraint):
+        for segment in constraint.segments:
+            anchor_a = segment._get_world_anchor(segment.body_a, segment.anchor_a)
+            anchor_b = segment._get_world_anchor(segment.body_b, segment.anchor_b)
+            sx1 , sy1 = self.to_screen(anchor_a[0] , anchor_a[1])
+            sx2 , sy2 = self.to_screen(anchor_b[0] , anchor_b[1])
+            pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
+    
     def _point_in_polygon(self, x, y, vertices):
         inside = False
         for i in range(len(vertices)):
@@ -141,6 +170,8 @@ class Renderer:
             for body in self.world.rigid_bodies:
                 self.draw_rigid_body(body)
                 self.draw_sat_debug(body)
+            for constraint in self.world.constraints:
+                self.draw_constraint(constraint)
             pygame.display.flip()
             self.clock.tick(60)
 

@@ -205,7 +205,7 @@ w = 1/m + (r × n)² / I
 
 This is the correct lever-arm term missing from naive distance constraints applied to rigid bodies. Without it, the constraint can only translate bodies, not properly rotate them to satisfy the joint.
 
-**ChainConstraint** internally creates N-1 Link nodes and N+1 DistanceConstraint segments. Its own solve loop iterates all segments, then applies Coulomb friction between consecutive link pairs:
+**ChainConstraint** internally creates n_links - 1 Link nodes and n_links DistanceConstraint segments. Its own solve loop iterates all segments, then applies Coulomb friction between consecutive link pairs:
 
 ```
 friction_impulse = clamp(-v_tangential * reduced_mass, -μ*m*g, μ*m*g)
@@ -231,8 +231,8 @@ numpy
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/kronos.git
-cd kronos
+git clone https://github.com/KushalJain-00/Kronos-Physics_Engine-.git
+cd Kronos-Physics_Engine-
 pip install pygame dearpygui numpy
 python main.py
 ```
@@ -387,6 +387,10 @@ A complete rewrite, not an extension. Key changes:
 | Hinged bodies still overlap slightly | Constraint vs collision position correction fight | Phase 4 |
 
 ---
+
+## Contributing
+
+Contributions are welcome. If you would like to improve the engine, open an issue or submit a pull request with a focused change and a short explanation.
 
 ## Long-Term Vision
 
