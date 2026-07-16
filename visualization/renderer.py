@@ -95,6 +95,16 @@ class Renderer:
             sx1 , sy1 = self.to_screen(anchor_a[0] , anchor_a[1])
             sx2 , sy2 = self.to_screen(anchor_b[0] , anchor_b[1])
             pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
+        sx ,sy = self.to_screen(constraint.position.x , constraint.position.y)
+        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 1)
+
+    def _draw_distance(self , constraint):
+        sx1 , sy1 = self.to_screen(constraint.anchor_a.position.x , constraint.anchor_a.position.y)
+        sx2 , sy2 = self.to_screen(constraint.anchor_b.position.x , constraint.anchor_b.position.y)
+        pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
+
+    def _draw_chain(self , constraint):
+        pass
     
     def _point_in_polygon(self, x, y, vertices):
         inside = False

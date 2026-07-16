@@ -231,4 +231,9 @@ class ChainConstraint:
             a.velocity.y -= friction_impulse * ny
             b.velocity.x += friction_impulse * nx
             b.velocity.y += friction_impulse * ny
+            friction_impulse = max(-max_friction, min(max_friction, -rel_tangential_velocity * reduced_mass))
+            a.velocity.x -= friction_impulse * tx
+            a.velocity.y -= friction_impulse * ty
+            b.velocity.x += friction_impulse * tx
+            b.velocity.y += friction_impulse * ty
     

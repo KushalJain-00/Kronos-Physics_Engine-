@@ -239,6 +239,47 @@ python main.py
 
 ### Controls
 
+
+Δposition = n * inv_mass * λ
+Δangle = (r × n) * λ / I
+```
+
+This is the correct lever-arm term missing from naive distance constraints applied to rigid bodies. Without it, the constraint can only translate bodies, not properly rotate them to satisfy the joint.
+
+**ChainConstraint** internally creates N-1 Link nodes and N+1 DistanceConstraint segments. Its own solve loop iterates all segments, then applies Coulomb friction between consecutive link pairs:
+
+```
+friction_impulse = clamp(-v_tangential * reduced_mass, -μ*m*g, μ*m*g)
+```
+
+### Control Panel
+
+The control panel runs entirely on a separate thread using Dear PyGui. It reads and writes world state only while holding `world.lock`. The physics thread also holds this lock during `step()`. This prevents any torn reads of position/velocity data while the panel is rendering graphs.
+
+---
+
+## Getting Started
+
+### Requirements
+
+```
+python >= 3.10
+pygame
+dearpygui
+numpy
+```
+
+### Installation
+
+```bash
+git clone https://github.com/yourusername/kronos.git
+cd kronos
+pip install pygame dearpygui numpy
+python main.py
+```
+
+### Controls
+
 | Input | Action |
 |---|---|
 | Left click | Select object (shows in control panel) |
@@ -284,12 +325,56 @@ world.add_rigid_bodies(body_b)
 world.add_constraint(hinge)
 ```
 
+
+### Basic Pendulum
+```python
+world = World(800, 600)
+
+anchor = Particle(400, 500, 1.0)
+anchor.pinned = True
+
+bob = Particle(400, 350, 2.0)
+
+constraint = DistanceConstraint(anchor, bob, (0,0), (0,0), 150, stiffness=1.0)
+
+world.add_particle(anchor)
+world.add_particle(bob)
+world.add_constraint(constraint)
+```
+
+### Hinge Joint Between Two Rigid Bodies
+```python
+world = World(800, 600)
+
+body_a = RigidBody(400, 400, 10.0, 0.0)
+body_a.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
+
+body_b = RigidBody(400, 300, 1.0, 0.0)
+body_b.set_shape([(-50,-25),(50,-25),(50,25),(-50,25)])
+
+hinge = HingeConstraint(body_a, body_b, (0, 25), (0, -25))
+
+world.add_rigid_bodies(body_a)
+world.add_rigid_bodies(body_b)
+world.add_constraint(hinge)
+```
+
 ### Rope Between Two Bodies
 ```python
 world = World(800, 600)
 
 anchor = RigidBody(400, 500, 100.0, 0.0)  # heavy, barely moves
 anchor.set_shape([(-30,-10),(30,-10),(30,10),(-30,10)])
+
+payload = RigidBody(400, 300, 2.0, 0.0)
+payload.set_shape([(-20,-20),(20,-20),(20,20),(-20,20)])
+
+rope = ChainConstraint(
+    world, anchor, payload,
+    anchor_a=(0, -10), anchor_b=(0, 20),
+    n_links=8, stiffness=0.8, friction=0.2
+)
+
 
 payload = RigidBody(400, 300, 2.0, 0.0)
 payload.set_shape([(-20,-20),(20,-20),(20,20),(-20,20)])
