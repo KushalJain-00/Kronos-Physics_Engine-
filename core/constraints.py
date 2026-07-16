@@ -227,3 +227,4 @@ class ChainConstraint:
             a.velocity.y -= friction_impulse * ty
             b.velocity.x += friction_impulse * tx
             b.velocity.y += friction_impulse * ty
+    

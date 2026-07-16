@@ -67,6 +67,27 @@ class Renderer:
             y2 = int(cy - ny * scale)  # flip y
             pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
 
+    def draw_constraint(self, constraint):
+        from core.constraints import HingeConstraint, DistanceConstraint, ChainConstraint
+        if isinstance(constraint, HingeConstraint):
+            self._draw_hinge(constraint)
+        elif isinstance(constraint, DistanceConstraint):
+            self._draw_distance(constraint)
+        elif isinstance(constraint, ChainConstraint):
+            self._draw_chain(constraint)
+    
+    def _draw_hinge(self , constraint):
+        sx ,sy = self.to_screen(constraint.position.x , constraint.position.y)
+        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 1)
+
+    def _draw_distance(self , constraint):
+        sx1 , sy1 = self.to_screen(constraint.anchor_a.position.x , constraint.anchor_a.position.y)
+        sx2 , sy2 = self.to_screen(constraint.anchor_b.position.x , constraint.anchor_b.position.y)
+        pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
+
+    def _draw_chain(self , constraint):
+        pass
+    
     def _point_in_polygon(self, x, y, vertices):
         inside = False
         for i in range(len(vertices)):
