@@ -173,7 +173,11 @@ class ChainConstraint:
             self.links.append(link)
             world.add_link(link)
 
+        if n_links <= 0:
+            raise ValueError("n_links must be > 0")
+
         total_dist = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
+        total_dist = max(total_dist, 1e-6)
         link_length = total_dist / n_links
 
         nodes = [self.body_a] + self.links + [self.body_b]
@@ -211,17 +215,22 @@ class ChainConstraint:
             length = (dx**2 + dy**2) ** 0.5
             if length == 0:
                 continue
-            # Tangetial direction to the segment
-            tx = -dy / length
-            ty = dx / length
-            # Relative velocity in the tangential direction
+            # Normal direction to the segment
+            nx = -dy / length
+            ny = dx / length
+            # Relative velocity in the normal direction
             rel_vx = b.velocity.x - a.velocity.x
             rel_vy = b.velocity.y - a.velocity.y
-            rel_tangential_velocity = rel_vx * tx + rel_vy * ty
+            rel_normal_velocity = rel_vx * nx + rel_vy * ny
 
             normal_force = a.mass * 9.81
             max_friction = self.friction * normal_force
             reduced_mass = 1/((1/a.mass) + (1/b.mass))
+            friction_impulse = max(-max_friction, min(max_friction, -rel_normal_velocity * reduced_mass))
+            a.velocity.x -= friction_impulse * nx
+            a.velocity.y -= friction_impulse * ny
+            b.velocity.x += friction_impulse * nx
+            b.velocity.y += friction_impulse * ny
             friction_impulse = max(-max_friction, min(max_friction, -rel_tangential_velocity * reduced_mass))
             a.velocity.x -= friction_impulse * tx
             a.velocity.y -= friction_impulse * ty
