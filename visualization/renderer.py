@@ -79,7 +79,7 @@ class Renderer:
     def _draw_hinge(self , constraint):
         anchor = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
         sx ,sy = self.to_screen(anchor[0] , anchor[1])
-        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 1)
+        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 5)
 
     def _draw_distance(self , constraint):
         anchor_a = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
@@ -95,16 +95,10 @@ class Renderer:
             sx1 , sy1 = self.to_screen(anchor_a[0] , anchor_a[1])
             sx2 , sy2 = self.to_screen(anchor_b[0] , anchor_b[1])
             pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
-        sx ,sy = self.to_screen(constraint.position.x , constraint.position.y)
-        pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 1)
-
-    def _draw_distance(self , constraint):
-        sx1 , sy1 = self.to_screen(constraint.anchor_a.position.x , constraint.anchor_a.position.y)
-        sx2 , sy2 = self.to_screen(constraint.anchor_b.position.x , constraint.anchor_b.position.y)
-        pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
-
-    def _draw_chain(self , constraint):
-        pass
+        if constraint.visible_links:
+            for link in constraint.links:
+                sx , sy = self.to_screen(link.position.x, link.position.y)
+                pygame.draw.circle(self.screen , (0 , 255 , 0) , (sx , sy) , 2)
     
     def _point_in_polygon(self, x, y, vertices):
         inside = False
