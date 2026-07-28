@@ -5,7 +5,9 @@ from core.particles import Particle
 from simulation.world import World
 
 class Renderer:
+    """Handles Pygame visualization and user interaction for the physics simulation."""
     def __init__(self, world, title="Physics Engine"):
+        """Initialize the renderer window, Pygame display, and simulation clock."""
         self.world = world
         pygame.init()
         self.screen = pygame.display.set_mode((world.width, world.height))
@@ -13,12 +15,15 @@ class Renderer:
         self.clock = pygame.time.Clock()
 
     def to_screen(self, x, y):
+        """Convert world coordinates to Pygame screen pixel coordinates."""
         return int(x), int(self.world.height - y)
 
     def from_screen(self, sx, sy):
+        """Convert Pygame screen pixel coordinates to world coordinates."""
         return float(sx), float(self.world.height - sy)
 
     def draw_grid(self, spacing=50):
+        """Draw background coordinate grid lines and tick labels."""
         grid_color = (30, 30, 30)  # dark grey, subtle
         font = pygame.font.SysFont("monospace", 10)
         # vertical lines
@@ -34,20 +39,24 @@ class Renderer:
             self.screen.blit(label, (2, self.world.height - y - 12))
             
     def draw_particle(self, particle):
+        """Draw a single particle as a colored circle."""
         sx, sy = self.to_screen(particle.position.x, particle.position.y)
         pygame.draw.circle(self.screen, particle.color, (sx, sy), particle.radius)
 
     def draw_spring(self, spring):
+        """Draw a spring connection line between two particles."""
         sx1, sy1 = self.to_screen(spring.p1.position.x, spring.p1.position.y)
         sx2, sy2 = self.to_screen(spring.p2.position.x, spring.p2.position.y)
         pygame.draw.line(self.screen, (100, 100, 255), (sx1, sy1), (sx2, sy2), 2)
 
     def draw_rigid_body(self , body):
+        """Draw a rigid body polygon on the screen."""
         vertices = body.get_world_vertices()
         screen_vertices = [self.to_screen(x , y) for x , y in vertices]
         pygame.draw.polygon(self.screen , body.color , screen_vertices , 2)
 
     def draw_sat_debug(self, body):
+        """Draw Separating Axis Theorem (SAT) projection axes for collision debugging."""
         vertices = body.get_world_vertices()
         axes = body.get_axes()
         cx, cy = self.to_screen(body.position.x, body.position.y)
@@ -68,6 +77,7 @@ class Renderer:
             pygame.draw.line(self.screen, (255, 255, 0), (x1, y1), (x2, y2), 1)
 
     def draw_constraint(self, constraint):
+        """Dispatch rendering based on the type of constraint."""
         from core.constraints import HingeConstraint, DistanceConstraint, ChainConstraint
         if isinstance(constraint, HingeConstraint):
             self._draw_hinge(constraint)
@@ -77,11 +87,13 @@ class Renderer:
             self._draw_chain(constraint)
     
     def _draw_hinge(self , constraint):
+        """Draw a hinge constraint anchor point."""
         anchor = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
         sx ,sy = self.to_screen(anchor[0] , anchor[1])
         pygame.draw.circle(self.screen , (255 , 0 , 0) , (sx , sy) , 5)
 
     def _draw_distance(self , constraint):
+        """Draw a distance constraint line connecting two bodies."""
         anchor_a = constraint._get_world_anchor(constraint.body_a, constraint.anchor_a)
         anchor_b = constraint._get_world_anchor(constraint.body_b, constraint.anchor_b)
         sx1 , sy1 = self.to_screen(anchor_a[0] , anchor_a[1])
@@ -89,6 +101,7 @@ class Renderer:
         pygame.draw.line(self.screen , (255 , 0 , 0) , (sx1 , sy1) , (sx2 , sy2) , 2)
 
     def _draw_chain(self , constraint):
+        """Draw chain constraint segments and optional link markers."""
         for segment in constraint.segments:
             anchor_a = segment._get_world_anchor(segment.body_a, segment.anchor_a)
             anchor_b = segment._get_world_anchor(segment.body_b, segment.anchor_b)
@@ -101,6 +114,7 @@ class Renderer:
                 pygame.draw.circle(self.screen , (0 , 255 , 0) , (sx , sy) , 2)
     
     def _point_in_polygon(self, x, y, vertices):
+        """Check if a point (x, y) is inside a polygon using the ray-casting algorithm."""
         inside = False
         for i in range(len(vertices)):
             j = (i + 1) % len(vertices)
@@ -112,6 +126,7 @@ class Renderer:
         return inside
 
     def _try_select(self, wx, wy):
+        """Select a particle or rigid body at world coordinates (wx, wy)."""
         selected = None
         with self.world.lock:
             for p in self.world.particles:
@@ -128,6 +143,7 @@ class Renderer:
             self.world.selected = selected
 
     def run(self):
+        """Execute the main render loop, process input events, and step physics."""
         accumulator = 0.0
         physics_dt = 0.008
         last_time = pygame.time.get_ticks() / 1000.0
