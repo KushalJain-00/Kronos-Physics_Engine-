@@ -232,3 +232,43 @@ class ChainConstraint:
             b.velocity.x += friction_impulse * nx
             b.velocity.y += friction_impulse * ny
     
+class AngleConstraint:
+    def __init__(self, body_a, body_b, max_angle, min_angle, stiffness = 0.5):
+        self.body_a = body_a
+        self.body_b = body_b
+        self.max_angle = max_angle
+        self.min_angle = min_angle
+        self.stiffness = stiffness
+
+    def solve(self):
+        i_a = getattr(self.body_a, 'moment_of_inertia', 0)
+        i_b = getattr(self.body_b, 'moment_of_inertia', 0)
+        relative_angle = self.body_b.angle - self.body_a.angle
+        w = (1 / i_a if i_a > 0 else 0) + (1 / i_b if i_b > 0 else 0)
+        if relative_angle > self.max_angle:
+            correction = (relative_angle - self.max_angle) * self.stiffness
+            self.body_b.angle -= correction
+            self.body_a.angle += correction
+            self.body_a.angular_velocity -= correction
+            self.body_b.angular_velocity += correction
+        elif relative_angle < self.min_angle:
+            correction = (self.min_angle - relative_angle) * self.stiffness
+            self.body_b.angle += correction
+            self.body_a.angle -= correction
+            self.body_a.angular_velocity += correction
+            self.body_b.angular_velocity -= correction
+        
+
+class MotorConstraint:
+    def __init__():
+        pass
+
+    def solve():
+        pass
+
+class WeldConstraint:
+    def __init__():
+        pass
+
+    def solve():
+        pass
