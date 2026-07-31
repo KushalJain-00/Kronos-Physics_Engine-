@@ -232,3 +232,47 @@ class ChainConstraint:
             b.velocity.x += friction_impulse * nx
             b.velocity.y += friction_impulse * ny
     
+class AngleConstraint:
+    def __init__(self, body_a, body_b, max_angle, min_angle, stiffness = 0.5):
+        if min_angle > max_angle:
+            raise ValueError("min_angle must not be greater than max_angle")
+        self.body_a = body_a
+        self.body_b = body_b
+        self.max_angle = max_angle
+        self.min_angle = min_angle
+        self.stiffness = stiffness
+
+    def solve(self):
+        i_a = getattr(self.body_a, 'moment_of_inertia', 0)
+        i_b = getattr(self.body_b, 'moment_of_inertia', 0)
+        inv_a = 1 / i_a if i_a > 0 else 0
+        inv_b = 1 / i_b if i_b > 0 else 0
+        w = inv_a + inv_b
+        if w == 0:
+            return
+        relative_angle = self.body_b.angle - self.body_a.angle
+        if relative_angle > self.max_angle:
+            correction = (relative_angle - self.max_angle) * self.stiffness
+            self.body_b.angle -= correction * (inv_b / w)
+            self.body_a.angle += correction * (inv_a / w)
+        elif relative_angle < self.min_angle:
+            correction = (self.min_angle - relative_angle) * self.stiffness
+            self.body_b.angle += correction * (inv_b / w)
+            self.body_a.angle -= correction * (inv_a / w)
+        # ponytail: angular_velocity updates deferred — solve() has no timestep contract,
+        # so velocity += displacement is wrong; revisit when solve(dt) exists
+
+
+class MotorConstraint:
+    def __init__(self):
+        pass
+
+    def solve(self):
+        pass
+
+class WeldConstraint:
+    def __init__(self):
+        pass
+
+    def solve(self):
+        pass
