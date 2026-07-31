@@ -207,6 +207,9 @@ class ChainConstraint:
             self._apply_friction()
     
     def _apply_friction(self):
+        """
+        Apply friction impulses between adjacent links based on their relative normal velocity.
+        """
         for i in range(len(self.links) - 1):
             a = self.links[i]
             b = self.links[i + 1]
@@ -234,6 +237,16 @@ class ChainConstraint:
     
 class AngleConstraint:
     def __init__(self, body_a, body_b, max_angle, min_angle, stiffness = 0.5):
+        """
+        Constrain the relative angle between two bodies to a specified range.
+        
+        Parameters:
+            body_a: The first body.
+            body_b: The second body.
+            max_angle: The maximum allowed relative angle.
+            min_angle: The minimum allowed relative angle.
+            stiffness: The correction strength, from 0 to 1.
+        """
         self.body_a = body_a
         self.body_b = body_b
         self.max_angle = max_angle
@@ -241,6 +254,9 @@ class AngleConstraint:
         self.stiffness = stiffness
 
     def solve(self):
+        """
+        Enforces the configured relative-angle limits between the two bodies by applying angular corrections.
+        """
         i_a = getattr(self.body_a, 'moment_of_inertia', 0)
         i_b = getattr(self.body_b, 'moment_of_inertia', 0)
         relative_angle = self.body_b.angle - self.body_a.angle
@@ -264,6 +280,7 @@ class MotorConstraint:
         pass
 
     def solve():
+        """Provide a placeholder for constraint solving."""
         pass
 
 class WeldConstraint:
@@ -271,4 +288,5 @@ class WeldConstraint:
         pass
 
     def solve():
+        """Provide a placeholder for constraint solving."""
         pass
