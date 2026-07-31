@@ -46,15 +46,6 @@ Most physics simulations in software call a library and never understand what ha
 
 Every bug fixed here represents a physics concept deeply understood — not just called from an API. SAT collision, PBD constraint solving, impulse resolution, moment of inertia, Verlet integration, Coulomb friction — all implemented by hand, verified against real conservation laws, and reviewed via CodeRabbit AI on every pull request.
 
-It is also the technical foundation for a larger personal project roadmap:
-
-```
-Kronos (physics engine)
-    → Cybersecurity Agent (authorized pentest/red-team tool)
-        → Multi-Agent Orchestration System
-            → Jarvis-style Personal Assistant
-```
-
 ---
 
 ## Current Features
@@ -491,18 +482,3 @@ The expansion path:
                 → Optics (separate module, same suite)
                     → Unified multi-domain simulation software
 ```
-
----
-
-## Working Principles
-
-- **No physics libraries** — every formula from first principles
-- **No skipping phases** — each phase completes before the next begins
-- **PR for every feature** — CodeRabbit AI review before every merge
-- **One bug at a time** — diagnose from actual code, not descriptions
-- **Verify against physics** — conservation laws, not just "it looks right"
-
----
-
-*Built by Kushal Jain — CS student, co-founder of TriSangum Labs.*
-*Part of a longer personal roadmap: Kronos → Cybersecurity Agent → Multi-Agent System → Jarvis.*
