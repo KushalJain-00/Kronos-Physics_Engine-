@@ -118,6 +118,8 @@ class RigidBody:
     def update(self, dt):
         if self.pinned:
             self.time += dt
+            self.acceleration = Vector2D(0, 0)
+            self.angular_acceleration = 0.0
             return
         self.old_acceleration = Vector2D(self.acceleration.x, self.acceleration.y)
         # linear

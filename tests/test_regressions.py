@@ -57,6 +57,17 @@ def test_no_division_by_zero_for_zero_relative_velocity_in_friction(world, box_b
     assert b2.velocity.x == pytest.approx(0.0, abs=1e-9)
 
 
+def test_pinned_rigid_body_does_not_accumulate_acceleration(world):
+    """A pinned rigid body must not accumulate gravity in acceleration across steps — world.step applies gravity to every body unconditionally, and update() must clear it or unpinning later unleashes unbounded force (CodeRabbit catch)."""
+    b = RigidBody(400, 300, 1.0, 0.0)
+    b.pinned = True
+    world.add_rigid_bodies(b)
+    for _ in range(100):
+        world.step(0.01)
+    assert b.acceleration.x == pytest.approx(0.0, abs=0)
+    assert b.acceleration.y == pytest.approx(0.0, abs=0)
+
+
 def test_no_race_condition_reading_world_state_during_step(world):
     """The physics lock must make concurrent reads during step() safe — a torn read or exception here means the threading model regressed (CodeRabbit catch)."""
     p = Particle(400, 300, 1.0)

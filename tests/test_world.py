@@ -1,7 +1,5 @@
 """Tests that verify World's fixed-timestep stepping, gravity integration, clock semantics, and add/clear bookkeeping."""
 
-import os
-
 import pytest
 from core.chains_and_ropes import Link
 from core.constraints import DistanceConstraint
@@ -33,7 +31,7 @@ def test_gravity_accelerates_particle_matches_analytic_v_equals_gt(world):
 
 def test_fixed_timestep_decoupled_from_variable_render_dt(world, monkeypatch):
     """A 50 ms render frame must trigger exactly 6 fixed 8 ms physics steps — the accumulator decouples physics from render framerate (runs the real Renderer loop under a dummy SDL driver with a synthetic clock)."""
-    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
     import pygame
     from visualization.renderer import Renderer
 
