@@ -16,12 +16,36 @@ class RigidBody:
         self.angular_velocity = 0.0
         self.angular_acceleration = 0.0
         self.moment_of_inertia = 0.0
+        self.pinned = False
         self.color = color
     
     def set_shape(self , vertices):
         self.vertices = vertices
         self.moment_of_inertia = self._calculate_inertia()
     
+    def _shoelace_terms(self):
+        n = len(self.vertices)
+        area2 = 0.0
+        cxx = 0.0
+        cyy = 0.0
+        for i in range(n):
+            p1 = self.vertices[i]
+            p2 = self.vertices[(i + 1) % n]
+            cross = p1[0] * p2[1] - p1[1] * p2[0]
+            area2 += cross
+            cxx += (p1[0] + p2[0]) * cross
+            cyy += (p1[1] + p2[1]) * cross
+        return area2, cxx, cyy
+
+    def area(self):
+        return abs(self._shoelace_terms()[0]) / 2
+
+    def center_of_mass(self):
+        area2, cxx, cyy = self._shoelace_terms()
+        if area2 == 0:
+            return (0.0, 0.0)
+        return (cxx / (3 * area2), cyy / (3 * area2))
+
     def _calculate_inertia(self):
         n = len(self.vertices)
         numerator = 0
@@ -92,6 +116,9 @@ class RigidBody:
         return {"normal": normal, "depth": min_overlap}
 
     def update(self, dt):
+        if self.pinned:
+            self.time += dt
+            return
         self.old_acceleration = Vector2D(self.acceleration.x, self.acceleration.y)
         # linear
         self.position.x += self.velocity.x * dt + 0.5 * self.acceleration.x * dt**2
