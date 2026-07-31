@@ -11,7 +11,7 @@ def build(world: World) -> None:
     body_b = RigidBody(400, 300, 1.0, 0.0)
     body_b.set_shape([(-50, -25), (50, -25), (50, 25), (-50, 25)])
 
-    hinge = HingeConstraint(body_a, body_b, (0, 25), (0, -25))
+    hinge = HingeConstraint(body_a, body_b, (0, -25), (0, 25))
 
     world.add_rigid_bodies(body_a)
     world.add_rigid_bodies(body_b)

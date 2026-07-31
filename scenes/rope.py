@@ -5,6 +5,7 @@ from simulation.world import World
 def build(world: World) -> None:
     anchor = RigidBody(400, 500, 100.0, 0.0)
     anchor.set_shape([(-30, -10), (30, -10), (30, 10), (-30, 10)])
+    anchor.pinned = True
     payload = RigidBody(400, 300, 2.0, 0.0)
     payload.set_shape([(-20, -20), (20, -20), (20, 20), (-20, 20)])
 
