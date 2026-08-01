@@ -1,4 +1,7 @@
 from core.vectors import Vector2D
+from core.particles import Particle
+from core.rigidbody import RigidBody
+from simulation.spatial_hash import SpatialHash
 import threading
 
 class World:
@@ -11,11 +14,14 @@ class World:
         self.constraints = []
         self.links = []
         self.gravity = Vector2D(0, -9.8)
+        self.wind = Vector2D(0, 0)
         self.restitution = 0.9
         self.rigid_body_restitution = 0.5 
         self.drag_coefficient = 0
         self.mu = 0.1
         self.dt = 0.1
+        self.substeps = 2
+        self.debug_contacts = []
         self.paused = False
         self.lock = threading.Lock()
         self.selected = None
@@ -50,48 +56,75 @@ class World:
                 return
             if dt is None:
                 dt = self.dt
-            
+            self.debug_contacts = []
+            h = dt / self.substeps
+            # ponytail: angular damping once per step, not per substep — per-substep damping
+            # decays spin created mid-step by impulses, breaking the angular-momentum tests
             for body in self.rigid_bodies:
-                body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
-                body.update(dt)
                 body.angular_velocity *= (0.99 ** (dt / 0.016))
-                self._handle_rigid_body_boundries(body)
-            
-            for spring in self.springs:
-                spring.apply_spring_force()
-            
-            for p in self.particles:
-                if hasattr(p, 'pinned') and p.pinned:
-                    p.acceleration = Vector2D(0, 0)
-                    p.update(dt)
-                    continue
-                drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
-                p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
-                p.apply_force(drag_force)
-                p.update(dt)
-                self._handle_boundaries(p)
-            
-            for i in range(len(self.rigid_bodies)):
-                for j in range(i+1, len(self.rigid_bodies)):
-                    b1 = self.rigid_bodies[i]
-                    b2 = self.rigid_bodies[j]
-                    result = b1.sat_collision(b2)
-                    if result:
-                        self._correct_rigid_body_positions(b1, b2, result)
-                        
-            for link in self.links:
-                link.apply_force(Vector2D(self.gravity.x * link.mass,self.gravity.y * link.mass))
-                link.update(dt)
-                self._handle_boundaries(link)
+            for i in range(self.substeps):
+                self._substep(h, correct=(i == 0))
 
-            for _ in range(8):
-                self._handle_collisions()
-                self._handle_rigid_body_collisions()
-                self._handle_particle_rigid_body_collisions()
-            
-            for _ in range(5):
-                for constraint in self.constraints:
-                    constraint.solve()
+    def _substep(self, h, correct=False):
+        for body in self.rigid_bodies:
+            body.apply_force(Vector2D(self.gravity.x * body.mass, self.gravity.y * body.mass))
+            body.update(h)
+            self._handle_rigid_body_boundries(body)
+        
+        for spring in self.springs:
+            spring.apply_spring_force()
+        
+        for p in self.particles:
+            if hasattr(p, 'pinned') and p.pinned:
+                p.acceleration = Vector2D(0, 0)
+                p.update(h)
+                continue
+            drag_force = Vector2D(-self.drag_coefficient * p.velocity.x , -self.drag_coefficient * p.velocity.y) 
+            p.apply_force(Vector2D(self.gravity.x * p.mass, self.gravity.y * p.mass))
+            p.apply_force(drag_force)
+            p.apply_force(self.wind)
+            p.update(h)
+            self._handle_boundaries(p)
+        
+        grid = SpatialHash()
+        for p in self.particles:
+            grid.insert(p, p.position.x, p.position.y, extent=p.radius)
+        for body in self.rigid_bodies:
+            vertices = body.get_world_vertices()
+            if not vertices:
+                continue
+            xs = [v[0] for v in vertices]
+            ys = [v[1] for v in vertices]
+            extent = max((max(xs) - min(xs)) / 2, (max(ys) - min(ys)) / 2)
+            grid.insert(body, body.position.x, body.position.y, extent=extent)
+        pairs = grid.pairs()
+        pp_pairs = [(a, b) for a, b in pairs if isinstance(a, Particle) and isinstance(b, Particle)]
+        rb_pairs = [(a, b) for a, b in pairs if isinstance(a, RigidBody) and isinstance(b, RigidBody)]
+        prb_pairs = [(a, b) for a, b in pairs
+                     if (isinstance(a, Particle) and isinstance(b, RigidBody))
+                     or (isinstance(a, RigidBody) and isinstance(b, Particle))]
+        
+        # ponytail: position correction once per step (first substep) — a correction run after
+        # an impulse hits tilted post-rotation normals, breaking the angular-momentum tests
+        if correct:
+            for b1, b2 in rb_pairs:
+                result = b1.sat_collision(b2)
+                if result:
+                    self._correct_rigid_body_positions(b1, b2, result)
+                
+        for link in self.links:
+            link.apply_force(Vector2D(self.gravity.x * link.mass,self.gravity.y * link.mass))
+            link.update(h)
+            self._handle_boundaries(link)
+
+        for _ in range(8):
+            self._handle_collisions(pp_pairs)
+            self._handle_rigid_body_collisions(rb_pairs)
+            self._handle_particle_rigid_body_collisions(prb_pairs)
+        
+        for _ in range(5):
+            for constraint in self.constraints:
+                constraint.solve()
             
     def _handle_boundaries(self, p):
         # Lower Boundry for Particle
@@ -144,6 +177,18 @@ class World:
             body.position.y -= penetration
             body.velocity.y *= -self.restitution
             body.angular_velocity *= self.restitution
+            if abs(body.acceleration.y) < 2.0:
+                body.acceleration.y = 0
+            if abs(body.acceleration.x) < 2.0:
+                body.acceleration.x = 0
+            if abs(body.angular_acceleration) < 0.1:
+                body.angular_acceleration = 0
+            if abs(body.velocity.y) < 2.0:
+                body.velocity.y = 0
+            if abs(body.velocity.x) < 2.0:
+                body.velocity.x = 0
+            if abs(body.angular_velocity) < 0.1:
+                body.angular_velocity = 0
         
         # left
         if min(x_coords) <= 0:
@@ -159,43 +204,42 @@ class World:
             body.velocity.x *= -self.restitution
             body.angular_velocity *= self.restitution
     
-    def _handle_collisions(self):
-        for i in range(len(self.particles)):
-            for j in range(i+1, len(self.particles)):
-                p1 = self.particles[i]
-                p2 = self.particles[j]
+    def _handle_collisions(self, pairs):
+        for p1, p2 in pairs:
+            dist = p1.position.distance(p2.position)
+            min_dist = p1.radius + p2.radius
+            
+            if dist < min_dist and dist > 0:
+                # position correction - separate them
+                overlap = min_dist - dist
+                dx = (p2.position.x - p1.position.x) / dist
+                dy = (p2.position.y - p1.position.y) / dist
+                p1.position.x -= dx * overlap / 2
+                p1.position.y -= dy * overlap / 2
+                p2.position.x += dx * overlap / 2
+                p2.position.y += dy * overlap / 2
+                self.debug_contacts.append({"point": ((p1.position.x + p2.position.x) / 2,
+                                                       (p1.position.y + p2.position.y) / 2),
+                                            "normal": (dx, dy), "depth": overlap})
                 
-                dist = p1.position.distance(p2.position)
-                min_dist = p1.radius + p2.radius
-                
-                if dist < min_dist and dist > 0:
-                    # position correction - separate them
-                    overlap = min_dist - dist
-                    dx = (p2.position.x - p1.position.x) / dist
-                    dy = (p2.position.y - p1.position.y) / dist
-                    p1.position.x -= dx * overlap / 2
-                    p1.position.y -= dy * overlap / 2
-                    p2.position.x += dx * overlap / 2
-                    p2.position.y += dy * overlap / 2
-                    
-                    # momentum conservation
-                    # collision normal
-                    nx = dx
-                    ny = dy
-                    dvx = p1.velocity.x - p2.velocity.x  # relative velocity
-                    dvy = p1.velocity.y - p2.velocity.y
-                    # relative velocity along normal
-                    dot = dvx * nx + dvy * ny
-                    if dot <= 0:
-                        continue
-                    # impulse scalar
-                    impulse = (-(1 + self.restitution) * dot) / (1/p1.mass + 1/p2.mass)
+                # momentum conservation
+                # collision normal
+                nx = dx
+                ny = dy
+                dvx = p1.velocity.x - p2.velocity.x  # relative velocity
+                dvy = p1.velocity.y - p2.velocity.y
+                # relative velocity along normal
+                dot = dvx * nx + dvy * ny
+                if dot <= 0:
+                    continue
+                # impulse scalar
+                impulse = (-(1 + self.restitution) * dot) / (1/p1.mass + 1/p2.mass)
 
-                    # apply impulse along normal only
-                    p1.velocity.x += (impulse / p1.mass) * nx
-                    p1.velocity.y += (impulse / p1.mass) * ny
-                    p2.velocity.x -= (impulse / p2.mass) * nx
-                    p2.velocity.y -= (impulse / p2.mass) * ny
+                # apply impulse along normal only
+                p1.velocity.x += (impulse / p1.mass) * nx
+                p1.velocity.y += (impulse / p1.mass) * ny
+                p2.velocity.x -= (impulse / p2.mass) * nx
+                p2.velocity.y -= (impulse / p2.mass) * ny
 
     def _resolve_rigid_body_collision(self, b1, b2, result):
         normal = list(result["normal"])
@@ -254,14 +298,17 @@ class World:
             torque2 = r2x * impulse_scalar * normal[1] - r2y * impulse_scalar * normal[0]
             b2.angular_velocity -= torque2 / b2.moment_of_inertia
 
-    def _handle_rigid_body_collisions(self):
-        for i in range(len(self.rigid_bodies)):
-            for j in range(i+1, len(self.rigid_bodies)):
-                b1 = self.rigid_bodies[i]
-                b2 = self.rigid_bodies[j]
-                result = b1.sat_collision(b2)
-                if result:
-                    self._resolve_rigid_body_collision(b1, b2, result)
+        if cp is not None:
+            point = cp
+        else:
+            point = ((b1.position.x + b2.position.x) / 2, (b1.position.y + b2.position.y) / 2)
+        self.debug_contacts.append({"point": point, "normal": normal, "depth": depth})
+
+    def _handle_rigid_body_collisions(self, pairs):
+        for b1, b2 in pairs:
+            result = b1.sat_collision(b2)
+            if result:
+                self._resolve_rigid_body_collision(b1, b2, result)
     
     def _correct_rigid_body_positions(self , b1 , b2 , result):
         normal = list(result["normal"])
@@ -307,6 +354,18 @@ class World:
         body.velocity.x -= (impulse_scalar / body.mass) * normal[0]
         body.velocity.y -= (impulse_scalar / body.mass) * normal[1]
 
+        # Coulomb-clamped friction along tangent
+        # ponytail: linear-only friction, spin ignored
+        tangent = (-normal[1], normal[0])
+        rel_vel_tangent = rel_vel_x * tangent[0] + rel_vel_y * tangent[1]
+        friction_scalar = -rel_vel_tangent / (1/particle.mass + 1/body.mass)
+        if abs(friction_scalar) > abs(impulse_scalar * self.mu):
+            friction_scalar = -impulse_scalar * self.mu * (1 if rel_vel_tangent > 0 else -1)
+        particle.velocity.x += (friction_scalar / particle.mass) * tangent[0]
+        particle.velocity.y += (friction_scalar / particle.mass) * tangent[1]
+        body.velocity.x -= (friction_scalar / body.mass) * tangent[0]
+        body.velocity.y -= (friction_scalar / body.mass) * tangent[1]
+
         # vector from body center to contact point
         # contact point is on particle surface toward body
         contact_x = particle.position.x - normal[0] * particle.radius
@@ -326,12 +385,17 @@ class World:
             torque = r_x * (-impulse_scalar * normal[1]) - r_y * (-impulse_scalar * normal[0])
             body.angular_velocity += torque / body.moment_of_inertia
 
-    def _handle_particle_rigid_body_collisions(self):
-        for body in self.rigid_bodies:
-            for particle in self.particles:
-                result = body.particle_collision(particle)
-                if result:
-                    self._resolve_particle_rigid_body_collision(particle, body, result)
+        self.debug_contacts.append({"point": (contact_x, contact_y), "normal": normal, "depth": depth})
+
+    def _handle_particle_rigid_body_collisions(self, pairs):
+        for a, b in pairs:
+            if isinstance(a, RigidBody):
+                body, particle = a, b
+            else:
+                body, particle = b, a
+            result = body.particle_collision(particle)
+            if result:
+                self._resolve_particle_rigid_body_collision(particle, body, result)
 
     def _are_hinged(self, b1, b2):
         for c in self.constraints:

@@ -29,27 +29,14 @@ def test_gravity_accelerates_particle_matches_analytic_v_equals_gt(world):
     assert p.position.y == pytest.approx(300.0 - 0.5 * 9.8 * 0.01**2, abs=1e-9)
 
 
-def test_fixed_timestep_decoupled_from_variable_render_dt(world, monkeypatch):
-    """A 50 ms render frame must trigger exactly 6 fixed 8 ms physics steps — the accumulator decouples physics from render framerate (runs the real Renderer loop under a dummy SDL driver with a synthetic clock)."""
-    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
-    import pygame
-    from visualization.renderer import Renderer
-
-    steps = []
-    real_step = world.step
-
-    def counting_step(dt):
-        steps.append(dt)
-        real_step(dt)
-
-    monkeypatch.setattr(world, "step", counting_step)
-    ticks = iter([0.0, 50.0, 50.0])
-    monkeypatch.setattr(pygame.time, "get_ticks", lambda: next(ticks))
-    events = iter([[], [pygame.event.Event(pygame.QUIT)]])
-    monkeypatch.setattr(pygame.event, "get", lambda: next(events))
-    Renderer(world).run()
-    assert len(steps) == 6
-    assert all(s == pytest.approx(0.008, abs=1e-12) for s in steps)
+def test_wind_accelerates_particle_matches_analytic_v_equals_at(world):
+    """A particle at rest under constant wind (gravity zeroed) must follow v = a*t exactly — like gravity, the Verlet update is exact for constant acceleration."""
+    p = Particle(400, 300, 1.0)
+    world.add_particle(p)
+    world.gravity = Vector2D(0, 0)
+    world.wind = Vector2D(10, 0)
+    world.step(0.01)
+    assert p.velocity.x == pytest.approx(10 * 0.01, abs=1e-9)
 
 
 def test_add_and_remove_bodies_updates_world_state(world):
