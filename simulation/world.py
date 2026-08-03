@@ -93,9 +93,7 @@ class World:
             vertices = body.get_world_vertices()
             if not vertices:
                 continue
-            xs = [v[0] for v in vertices]
-            ys = [v[1] for v in vertices]
-            extent = max((max(xs) - min(xs)) / 2, (max(ys) - min(ys)) / 2)
+            extent = max(body.position.distance(Vector2D(v[0], v[1])) for v in vertices)
             grid.insert(body, body.position.x, body.position.y, extent=extent)
         pairs = grid.pairs()
         pp_pairs = [(a, b) for a, b in pairs if isinstance(a, Particle) and isinstance(b, Particle)]

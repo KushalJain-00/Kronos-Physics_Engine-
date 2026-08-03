@@ -19,7 +19,7 @@ def main() -> None:
     world = World(args.width, args.height)
     SCENES[args.scene](world)
 
-    Renderer(world, scenes=SCENES).run()
+    Renderer(world, scene=args.scene, scenes=SCENES).run()
 
 
 if __name__ == "__main__":

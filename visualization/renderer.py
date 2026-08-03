@@ -14,9 +14,10 @@ from simulation.timestep import FixedTimestep
 class Renderer:
     """Single-window DearPyGui studio: drawlist viewport + docked control panels."""
 
-    def __init__(self, world, scenes=None):
+    def __init__(self, world, scenes=None, scene=None):
         self.world = world
         self.scenes = scenes or {}
+        self.current_scene = scene
         self.timestep = FixedTimestep(0.008)
         self.cam_x, self.cam_y = world.width / 2, world.height / 2
         self.zoom = 1.0
@@ -37,7 +38,6 @@ class Renderer:
         self.frame_count = 0
         self.vel_x_history = []
         self.vel_y_history = []
-        self.current_scene = None
 
     def to_screen(self, wx, wy):
         return ((wx - self.cam_x) * self.zoom + self.view_w / 2,
@@ -51,6 +51,9 @@ class Renderer:
         mx, my = dpg.get_mouse_pos()
         wx_pos = dpg.get_item_pos("simulation_window")
         return self.from_screen(mx - wx_pos[0], my - wx_pos[1])
+
+    def _over_viewport(self):
+        return dpg.is_item_hovered("simulation_window")
 
     def _line(self, a, b, color, thickness=2):
         dpg.draw_line(a, b, color=color, thickness=thickness)
@@ -142,6 +145,7 @@ class Renderer:
             dpg.add_mouse_drag_handler(button=dpg.mvMouseButton_Left, callback=self._on_drag)
             dpg.add_mouse_drag_handler(button=dpg.mvMouseButton_Middle, callback=self._on_pan)
             dpg.add_mouse_release_handler(button=dpg.mvMouseButton_Left, callback=self._on_release)
+            dpg.add_mouse_release_handler(button=dpg.mvMouseButton_Middle, callback=self._clear_pan)
             dpg.add_mouse_wheel_handler(callback=self._on_wheel)
 
     def _toggle_pause(self):
@@ -171,6 +175,8 @@ class Renderer:
             self._load_scene(None, self.current_scene)
 
     def _on_click(self, sender, app_data):
+        if not self._over_viewport():
+            return
         wx, wy = self._mouse_world()
         for p in self.world.particles:
             if (p.position.x - wx) ** 2 + (p.position.y - wy) ** 2 <= p.radius ** 2:
@@ -184,6 +190,8 @@ class Renderer:
         self.world.selected = None
 
     def _on_drag(self, sender, app_data):
+        if not self._over_viewport():
+            return
         if self.dragging is None and self.world.selected is not None:
             wx, wy = self._mouse_world()
             obj = self.world.selected
@@ -202,7 +210,9 @@ class Renderer:
                 obj.velocity = Vector2D(dx / dt, dy / dt)
             self.dragging = None
 
-    def _on_pan(self, sender, app_data):
+def _on_pan(self, sender, app_data):
+        if not self._over_viewport():
+            return
         if self._pan_last is None:
             self._pan_last = app_data
             return
@@ -212,7 +222,12 @@ class Renderer:
         self.cam_y += dy / self.zoom
         self._pan_last = app_data
 
+    def _clear_pan(self, sender, app_data):
+        self._pan_last = None
+
     def _on_wheel(self, sender, app_data):
+        if not self._over_viewport():
+            return
         wx, wy = self._mouse_world()
         self.zoom = max(0.2, min(8.0, self.zoom * 1.1 ** app_data))
         nx, ny = self._mouse_world()
@@ -220,12 +235,16 @@ class Renderer:
         self.cam_y += wy - ny
 
     def _on_spawn(self, sender, app_data):
+        if not self._over_viewport():
+            return
         if self.spawn_mode == "select":
             return
         wx, wy = self._mouse_world()
         color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         if self.spawn_mode == "particle":
-            self.world.add_particle(Particle(wx, wy, self.mass, color=color))
+            p = Particle(wx, wy, self.mass, color=color)
+            p.radius = self.radius
+            self.world.add_particle(p)
             return
         body = RigidBody(wx, wy, self.mass, 0, color)
         if self.spawn_mode == "box":
@@ -240,7 +259,7 @@ class Renderer:
     def update_draw(self):
         cw = dpg.get_viewport_client_width() or 1280
         ch = dpg.get_viewport_client_height() or 800
-        self.view_w, self.view_h = cw - 600, ch
+        self.view_w, self.view_h = max(200, cw - 600), ch
         dpg.configure_item("controls_window", width=300, height=ch)
         dpg.configure_item("simulation_window", pos=(300, 0), width=self.view_w, height=ch)
         dpg.configure_item("inspector_window", pos=(cw - 300, 0), width=300, height=ch)
@@ -277,8 +296,8 @@ class Renderer:
                 normal = contact["normal"]
                 nx, ny = getattr(normal, "x", normal[0]), getattr(normal, "y", normal[1])
                 px, py = contact["point"]
-                self._circle(px, py, 3, (255, 255, 0))
                 sx, sy = self.to_screen(px, py)
+                self._circle(sx, sy, 3, (255, 255, 0))
                 ex, ey = self.to_screen(px + nx * 15, py + ny * 15)
                 self._line((sx, sy), (ex, ey), (255, 140, 0), thickness=2)
         self._draw_selection()

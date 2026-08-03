@@ -17,4 +17,5 @@ def build(world: World) -> None:
                 world.add_spring(Spring(p, grid[r][c - 1], spacing, k=0.5, damp=0.02))
             if r > 0:
                 world.add_spring(Spring(p, grid[r - 1][c], spacing, k=0.5, damp=0.02))
-                world.add_spring(Spring(p, grid[r - 1][c - 1], spacing, k=0.5, damp=0.02))
+                if c > 0:
+                    world.add_spring(Spring(p, grid[r - 1][c - 1], spacing, k=0.5, damp=0.02))
