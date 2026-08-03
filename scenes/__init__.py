@@ -4,6 +4,8 @@ from scenes.rope import build as rope
 from scenes.stacking_test import build as stacking_test
 from scenes.sandbox import build as sandbox
 from scenes.cloth import build as cloth
+from scenes.weld_joint import build as weld_joint
+from scenes.motor import build as motor
 
 SCENES = {
     "pendulum": pendulum,
@@ -12,4 +14,6 @@ SCENES = {
     "stacking_test": stacking_test,
     "sandbox": sandbox,
     "cloth": cloth,
+    "weld_joint": weld_joint,
+    "motor": motor,
 }
