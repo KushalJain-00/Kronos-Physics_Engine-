@@ -21,9 +21,11 @@ def main() -> None:
 
     renderer = Renderer(world)
 
-    if not args.no_panel:
-        panel = ControlPanel(world)
-        panel.start()
+    # Control panel temporarily disconnected from the world (thread-safety WIP).
+    # Reconnect when ready: uncomment below and keep every world read/write under world.lock.
+    # if not args.no_panel:
+    #     panel = ControlPanel(world)
+    #     panel.start()
 
     renderer.run()
 
