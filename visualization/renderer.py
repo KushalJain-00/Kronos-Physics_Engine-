@@ -210,7 +210,7 @@ class Renderer:
                 obj.velocity = Vector2D(dx / dt, dy / dt)
             self.dragging = None
 
-def _on_pan(self, sender, app_data):
+    def _on_pan(self, sender, app_data):
         if not self._over_viewport():
             return
         if self._pan_last is None:
