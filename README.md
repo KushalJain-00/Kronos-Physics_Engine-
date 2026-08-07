@@ -252,3 +252,4 @@ world.add_constraint(hinge); world.add_constraint(motor)
 | Stacking instability under many objects | No warm starting | Phase 4 |
 | O(n²) collision detection | No spatial partitioning | Phase 5 |
 | Fast objects tunnel through thin surfaces | No CCD | Phase 6 |
+# Trading_Agent_Platform
